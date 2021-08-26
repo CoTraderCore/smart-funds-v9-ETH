@@ -97,14 +97,10 @@ contract('SmartFundRegistry', function([userOne, userTwo, userThree]) {
 
     this.COT = '0x0000000000000000000000000000000000000000'
     this.ExchangePortal = '0x0000000000000000000000000000000000000001'
-    this.PoolPortal = '0x0000000000000000000000000000000000000002'
-    this.defiPortal = '0x0000000000000000000000000000000000000003'
     this.DAI = '0x0000000000000000000000000000000000000004'
 
     this.permittedAddresses = await PermittedAddresses.new(
       this.ExchangePortal,
-      this.PoolPortal,
-      this.defiPortal,
       this.DAI
     )
 
@@ -116,10 +112,8 @@ contract('SmartFundRegistry', function([userOne, userTwo, userThree]) {
 
     this.registry = await SmartFundRegistry.new(
       this.ExchangePortal,                          //   ExchangePortal.address,
-      this.PoolPortal,                              //   PoolPortal.address,
       this.smartFundETHFactory.address,             //   SmartFundETHFactory.address,
       this.SmartFundERC20Factory.address,           //   SmartFundERC20Factory.address
-      this.defiPortal,                              //   Defi Portal
       this.permittedAddresses.address,              //   PermittedAddresses
     )
   })
@@ -133,14 +127,6 @@ contract('SmartFundRegistry', function([userOne, userTwo, userThree]) {
     it('Correct initial ExchangePortal', async function() {
       assert.equal(this.ExchangePortal, await this.registry.exchangePortalAddress())
     })
-
-    it('Correct initial PoolPortal', async function() {
-      assert.equal(this.PoolPortal, await this.registry.poolPortalAddress())
-    })
-
-    it('Correct initial DefiPortal', async function() {
-      assert.equal(this.defiPortal, await this.registry.defiPortalAddress())
-    })
   })
 
   describe('Create full funds', function() {
@@ -149,8 +135,6 @@ contract('SmartFundRegistry', function([userOne, userTwo, userThree]) {
 
       const fund = new web3.eth.Contract(FundABI, await this.registry.smartFunds(0))
       assert.equal(this.ExchangePortal, await fund.methods.exchangePortal().call())
-      assert.equal(this.PoolPortal, await fund.methods.poolPortal().call())
-      assert.equal(this.defiPortal, await fund.methods.defiPortal().call())
       assert.equal(this.ETH_TOKEN_ADDRESS, await fund.methods.coreFundAsset().call())
     })
 
@@ -159,8 +143,6 @@ contract('SmartFundRegistry', function([userOne, userTwo, userThree]) {
 
       const fund = new web3.eth.Contract(FundABI, await this.registry.smartFunds(0))
       assert.equal(this.ExchangePortal, await fund.methods.exchangePortal().call())
-      assert.equal(this.PoolPortal, await fund.methods.poolPortal().call())
-      assert.equal(this.defiPortal, await fund.methods.defiPortal().call())
       assert.equal(this.DAI, await fund.methods.coreFundAsset().call())
     })
   })
@@ -189,18 +171,6 @@ contract('SmartFundRegistry', function([userOne, userTwo, userThree]) {
       assert.equal(testAddress, await this.registry.exchangePortalAddress())
     })
 
-    it('Owner should be able change pool portal address', async function() {
-      await this.permittedAddresses.addNewAddress(testAddress, 2)
-      await this.registry.setPoolPortalAddress(testAddress)
-      assert.equal(testAddress, await this.registry.poolPortalAddress())
-    })
-
-    it('Owner should be able change defi portal address', async function() {
-      await this.permittedAddresses.addNewAddress(testAddress, 3)
-      await this.registry.setDefiPortal(testAddress)
-      assert.equal(testAddress, await this.registry.defiPortalAddress())
-    })
-
     it('Owner should be able change maximumSuccessFee', async function() {
       await this.registry.setMaximumSuccessFee(4000)
       assert.equal(4000, await this.registry.maximumSuccessFee())
@@ -220,18 +190,6 @@ contract('SmartFundRegistry', function([userOne, userTwo, userThree]) {
     it('NOT Owner should NOT be able change exchange portal address', async function() {
       await this.permittedAddresses.addNewAddress(testAddress, 1)
       await this.registry.setExchangePortalAddress(testAddress, { from:userTwo })
-      .should.be.rejectedWith(EVMRevert)
-    })
-
-    it('NOT Owner should NOT be able change pool portal address', async function() {
-      await this.permittedAddresses.addNewAddress(testAddress, 2)
-      await this.registry.setPoolPortalAddress(testAddress, { from:userTwo })
-      .should.be.rejectedWith(EVMRevert)
-    })
-
-    it('NOT Owner should NOT be able change defi portal address', async function() {
-      await this.permittedAddresses.addNewAddress(testAddress, 3)
-      await this.registry.setDefiPortal(testAddress, { from:userTwo })
       .should.be.rejectedWith(EVMRevert)
     })
 

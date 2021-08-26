@@ -39,7 +39,6 @@ const ReEntrancyFundAtack = artifacts.require('./ReEntrancyFundAtack')
 const ReEntrancyFundAtackAsManager = artifacts.require('./ReEntrancyFundAtackAsManager')
 const Token = artifacts.require('./tokens/Token')
 const ExchangePortalMock = artifacts.require('./portalsMock/ExchangePortalMock')
-const PoolPortalMock = artifacts.require('./portalsMock/PoolPortalMock')
 const CoTraderDAOWalletMock = artifacts.require('./portalsMock/CoTraderDAOWalletMock')
 
 const COT_DAO_WALLET = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
@@ -116,7 +115,7 @@ contract('ReEntrancy Atack', function([userOne, userTwo, userThree]) {
       merkleWhiteList.address
     )
 
-    // allow exchange portal and pool portal write to token type storage
+    // allow exchange portal write to token type storage
     await tokensType.addNewPermittedAddress(exchangePortal.address)
 
     // Deploy ETH fund
@@ -126,8 +125,6 @@ contract('ReEntrancy Atack', function([userOne, userTwo, userThree]) {
       successFee,                                   // uint256 _successFee,
       COT_DAO_WALLET,                       // address _platformAddress,
       exchangePortal.address,                       // address _exchangePortalAddress,
-      '0x0000000000000000000000000000000000000000', // defi portal
-      '0x0000000000000000000000000000000000000000', // poolPortalAddress,
       '0x0000000000000000000000000000000000000000', // permitted addresses
       true                                          // verification for trade tokens
     )

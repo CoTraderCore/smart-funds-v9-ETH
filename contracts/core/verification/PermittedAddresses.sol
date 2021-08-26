@@ -19,20 +19,14 @@ contract PermittedAddresses is Ownable {
   * @dev contructor
   *
   * @param _exchangePortal      Exchange portal contract
-  * @param _poolPortal          Pool portal contract
   * @param _stableCoin          Stable coins addresses to permitted
-  * @param _defiPortal          Defi portal
   */
   constructor(
     address _exchangePortal,
-    address _poolPortal,
-    address _stableCoin,
-    address _defiPortal
+    address _stableCoin
   ) public
   {
     _enableAddress(_exchangePortal, uint256(Types.EXCHANGE_PORTAL));
-    _enableAddress(_poolPortal, uint256(Types.POOL_PORTAL));
-    _enableAddress(_defiPortal, uint256(Types.DEFI_PORTAL));
     _enableAddress(_stableCoin, uint256(Types.STABLE_COIN));
   }
 

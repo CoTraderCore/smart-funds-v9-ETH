@@ -23,7 +23,6 @@ contract SmartFundERC20 is SmartFundCore {
   * @param _successFee                   Percentage of profit that the fund manager receives
   * @param _platformAddress              Address of platform to send fees to
   * @param _exchangePortalAddress        Address of initial exchange portal
-  * @param _poolPortalAddress            Address of initial pool portal
   * @param _permittedAddresses           Address of permittedAddresses contract
   * @param _isRequireTradeVerification   If true fund will require verification from Merkle White list for each new asset
   */
@@ -33,8 +32,6 @@ contract SmartFundERC20 is SmartFundCore {
     uint256 _successFee,
     address _platformAddress,
     address _exchangePortalAddress,
-    address _poolPortalAddress,
-    address _defiPortal,
     address _permittedAddresses,
     address _coinAddress,
     bool    _isRequireTradeVerification
@@ -45,8 +42,6 @@ contract SmartFundERC20 is SmartFundCore {
     _successFee,
     _platformAddress,
     _exchangePortalAddress,
-    _poolPortalAddress,
-    _defiPortal,
     _permittedAddresses,
     _coinAddress,
     _isRequireTradeVerification

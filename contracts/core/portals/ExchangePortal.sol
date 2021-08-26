@@ -2,9 +2,6 @@ pragma solidity ^0.6.12;
 
 /*
 * This contract do swap for ERC20 via 1inch
-
-  Also this contract allow get ratio between crypto curency assets
-  Also get ratio for Bancor and Uniswap pools
 */
 
 import "../../zeppelin-solidity/contracts/access/Ownable.sol";
@@ -12,8 +9,6 @@ import "../../zeppelin-solidity/contracts/math/SafeMath.sol";
 
 import "../interfaces/IPricePortal.sol";
 import "../interfaces/ExchangePortalInterface.sol";
-import "../interfaces/DefiPortalInterface.sol";
-import "../interfaces/PoolPortalViewInterface.sol";
 import "../interfaces/ITokensTypeStorage.sol";
 import "../interfaces/IMerkleTreeTokensVerification.sol";
 
@@ -33,10 +28,6 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
   address public OneInchRoute;
 
   IPricePortal public pricePortal;
-
-  // CoTrader portals
-  PoolPortalViewInterface public poolPortal;
-  DefiPortalInterface public defiPortal;
 
 
   // Enum
@@ -66,16 +57,12 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
   /**
   * @dev contructor
   *
-  * @param _defiPortal             address of defiPortal contract
-  * @param _poolPortal             address of pool portal
   * @param _pricePortal            address of price portal
   * @param _OneInchRoute           address of oneInch ETH contract
   * @param _tokensTypes            address of the ITokensTypeStorage
   * @param _merkleTreeWhiteList    address of the IMerkleTreeWhiteList
   */
   constructor(
-    address _defiPortal,
-    address _poolPortal,
     address _pricePortal,
     address _OneInchRoute,
     address _tokensTypes,
@@ -83,8 +70,6 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
     )
     public
   {
-    defiPortal = DefiPortalInterface(_defiPortal);
-    poolPortal = PoolPortalViewInterface(_poolPortal);
     pricePortal = IPricePortal(_pricePortal);
     OneInchRoute = _OneInchRoute;
     tokensTypes = ITokensTypeStorage(_tokensTypes);
@@ -274,7 +259,7 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
   * @param _to        Address of token we're getting the value in
   * @param _amount    The amount of _from
   *
-  * @return best price from 1inch for ERC20, or ratio for Uniswap and Bancor pools
+  * @return best price from 1inch for ERC20
   */
   function getValue(address _from, address _to, uint256 _amount)
     public
@@ -282,52 +267,9 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
     view
     returns (uint256)
   {
-    if(_amount > 0){
-      // get asset type
-      bytes32 assetType = tokensTypes.getType(_from);
-
-      // get value by asset type
-      if(assetType == bytes32("CRYPTOCURRENCY")){
-        return getValueViaDEXsAgregators(_from, _to, _amount);
-      }
-      else{
-        // Unmarked type, try find value
-        return findValue(_from, _to, _amount);
-      }
-    }
-    else{
-      return 0;
-    }
+    return getValueViaDEXsAgregators(_from, _to, _amount);
   }
 
-  /**
-  * @dev find the ratio by amount of token _from in token _to trying all available methods
-  *
-  * @param _from      Address of token we're converting from
-  * @param _to        Address of token we're getting the value in
-  * @param _amount    The amount of _from
-  *
-  * @return best price from 1inch for ERC20, or ratio for Uniswap and Bancor pools
-  */
-  function findValue(address _from, address _to, uint256 _amount) private view returns (uint256) {
-     if(_amount > 0){
-       // re-check from aggregators for unknown type
-       uint256 aggregatorValue = getValueViaDEXsAgregators(_from, _to, _amount);
-       if(aggregatorValue > 0)
-          return aggregatorValue;
-       // Check at first value from defi portal, maybe there are new defi protocols
-       // If defiValue return 0 continue check from another sources
-       uint256 defiValue = defiPortal.getValue(_from, _to, _amount);
-       if(defiValue > 0)
-          return defiValue;
-
-       // Uniswap V2 pools return 0 if these is not a Uniswap V2 pool
-       return getValueForUniswapV2Pools(_from, _to, _amount);
-     }
-     else{
-       return 0;
-     }
-  }
 
 
   // helper for get value via 1inch
@@ -352,38 +294,6 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
     }
   }
 
-
-  // helper for get ratio between pools in Uniswap network version 2
-  // _from - should be uniswap pool address
-  function getValueForUniswapV2Pools(
-    address _from,
-    address _to,
-    uint256 _amount
-  )
-  public
-  view
-  returns (uint256)
-  {
-    // get connectors amount by pool share
-    try poolPortal.getUniswapV2ConnectorsAmountByPoolAmount(
-      _amount,
-      _from
-    ) returns (
-      uint256 tokenAmountOne,
-      uint256 tokenAmountTwo,
-      address tokenAddressOne,
-      address tokenAddressTwo
-      )
-    {
-      // convert connectors amount via DEX aggregator
-      uint256 amountOne = getValueViaDEXsAgregators(tokenAddressOne, _to, tokenAmountOne);
-      uint256 amountTwo = getValueViaDEXsAgregators(tokenAddressTwo, _to, tokenAmountTwo);
-      // return value
-      return amountOne + amountTwo;
-    }catch{
-      return 0;
-    }
-  }
 
   /**
   * @dev Gets the total value of array of tokens and amounts
@@ -430,16 +340,6 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
   // owner can change oneInch
   function setNewOneInchRoute(address _OneInchRoute) external onlyOwner {
     OneInchRoute = _OneInchRoute;
-  }
-
-  // owner can set new pool portal
-  function setNewPoolPortal(address _poolPortal) external onlyOwner {
-    poolPortal = PoolPortalViewInterface(_poolPortal);
-  }
-
-  // owner can set new defi portal
-  function setNewDefiPortal(address _defiPortal) external onlyOwner {
-    defiPortal = DefiPortalInterface(_defiPortal);
   }
 
   // fallback payable function to receive ether from other contract addresses

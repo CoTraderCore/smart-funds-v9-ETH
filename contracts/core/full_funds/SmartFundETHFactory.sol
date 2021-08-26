@@ -10,8 +10,6 @@ contract SmartFundETHFactory {
     uint256 _successFee,
     address _platfromAddress,
     address _exchangePortalAddress,
-    address _poolPortalAddress,
-    address _defiPortal,
     address _permittedAddresses,
     bool    _isRequireTradeVerification
   )
@@ -24,8 +22,6 @@ contract SmartFundETHFactory {
       _successFee,
       _platfromAddress,
       _exchangePortalAddress,
-      _poolPortalAddress,
-      _defiPortal,
       _permittedAddresses,
       _isRequireTradeVerification
     );

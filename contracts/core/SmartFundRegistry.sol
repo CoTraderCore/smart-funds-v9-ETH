@@ -19,9 +19,7 @@ contract SmartFundRegistry is Ownable {
   PermittedAddressesInterface public permittedAddresses;
 
   // Addresses of portals
-  address public poolPortalAddress;
   address public exchangePortalAddress;
-  address public defiPortalAddress;
 
   // Default maximum success fee is 3000/30%
   uint256 public maximumSuccessFee = 3000;
@@ -38,25 +36,19 @@ contract SmartFundRegistry is Ownable {
   * @dev contructor
   *
   * @param _exchangePortalAddress        Address of the initial ExchangePortal contract
-  * @param _poolPortalAddress            Address of the initial PoolPortal contract
   * @param _smartFundETHFactory          Address of smartFund ETH factory
   * @param _smartFundERC20Factory        Address of smartFund USD factory
-  * @param _defiPortalAddress            Address of defiPortal contract
   * @param _permittedAddresses           Address of permittedAddresses contract
   */
   constructor(
     address _exchangePortalAddress,
-    address _poolPortalAddress,
     address _smartFundETHFactory,
     address _smartFundERC20Factory,
-    address _defiPortalAddress,
     address _permittedAddresses
   ) public {
     exchangePortalAddress = _exchangePortalAddress;
-    poolPortalAddress = _poolPortalAddress;
     smartFundETHFactory = SmartFundETHFactoryInterface(_smartFundETHFactory);
     smartFundERC20Factory = SmartFundERC20FactoryInterface(_smartFundERC20Factory);
-    defiPortalAddress = _defiPortalAddress;
     permittedAddresses = PermittedAddressesInterface(_permittedAddresses);
   }
 
@@ -89,8 +81,6 @@ contract SmartFundRegistry is Ownable {
         _successFee, // manager and platform fee
         platformFeeAddress,
         exchangePortalAddress,
-        poolPortalAddress,
-        defiPortalAddress,
         address(permittedAddresses),
         _isRequireTradeVerification
       );
@@ -105,8 +95,6 @@ contract SmartFundRegistry is Ownable {
         _successFee, // manager and platform fee
         platformFeeAddress,
         exchangePortalAddress,
-        poolPortalAddress,
-        defiPortalAddress,
         address(permittedAddresses),
         _coreAsset,
         _isRequireTradeVerification
@@ -141,30 +129,6 @@ contract SmartFundRegistry is Ownable {
     require(permittedAddresses.permittedAddresses(_newExchangePortalAddress));
 
     exchangePortalAddress = _newExchangePortalAddress;
-  }
-
-  /**
-  * @dev Owner can set a new default Portal Portal address
-  *
-  * @param _poolPortalAddress    Address of the new pool portal to be set
-  */
-  function setPoolPortalAddress(address _poolPortalAddress) external onlyOwner {
-    // Require that the new pool portal is permitted by permittedAddresses
-    require(permittedAddresses.permittedAddresses(_poolPortalAddress));
-
-    poolPortalAddress = _poolPortalAddress;
-  }
-
-  /**
-  * @dev Allows the fund manager to connect to a new permitted defi portal
-  *
-  * @param _newDefiPortalAddress    The address of the new permitted defi portal to use
-  */
-  function setDefiPortal(address _newDefiPortalAddress) public onlyOwner {
-    // Require that the new defi portal is permitted by permittedAddresses
-    require(permittedAddresses.permittedAddresses(_newDefiPortalAddress));
-
-    defiPortalAddress = _newDefiPortalAddress;
   }
 
   /**

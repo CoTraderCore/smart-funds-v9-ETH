@@ -5,8 +5,6 @@ interface SmartFundERC20FactoryInterface {
     uint256 _successFee,
     address platformAddress,
     address _exchangePortalAddress,
-    address _poolPortalAddress,
-    address _defiPortal,
     address _permittedAddresses,
     address _coinAddress,
     bool    _isRequireTradeVerification
