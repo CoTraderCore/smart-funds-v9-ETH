@@ -40,13 +40,13 @@ const SmartFundETH = artifacts.require('./core/full_funds/SmartFundETH.sol')
 const TokensTypeStorage = artifacts.require('./core/storage/TokensTypeStorage.sol')
 const PermittedAddresses = artifacts.require('./core/verification/PermittedAddresses.sol')
 const MerkleWhiteList = artifacts.require('./core/verification/MerkleTreeTokensVerification.sol')
-const DefiPortal = artifacts.require('./core/portals/DefiPortal.sol')
 
 // mock
 const YVault = artifacts.require('./tokens/YVaultMock.sol')
 const Token = artifacts.require('./tokens/Token')
 const ExchangePortalMock = artifacts.require('./portalsMock/ExchangePortalMock')
 const PoolPortalMock = artifacts.require('./portalsMock/PoolPortalMock')
+const DefiPortal = artifacts.require('./portalsMock/DefiPortalMock.sol')
 const CoTraderDAOWalletMock = artifacts.require('./CoTraderDAOWalletMock')
 const OneInch = artifacts.require('./OneInchMock')
 
@@ -65,7 +65,6 @@ let xxxERC,
     DAIUNI,
     DAIBNT,
     poolPortal,
-    COT_DAO_WALLET,
     yyyERC,
     tokensType,
     permittedAddresses,
@@ -74,15 +73,17 @@ let xxxERC,
     MerkleTREE,
     defiPortal,
     yDAI,
-    ETHBNT
+    ETHBNT,
+    COT_DAO_WALLET
 
 
 
 contract('SmartFundETH', function([userOne, userTwo, userThree]) {
 
   async function deployContracts(successFee=1000){
-    COT_DAO_WALLET = await CoTraderDAOWalletMock.new()
     oneInch = await OneInch.new()
+
+    COT_DAO_WALLET = await CoTraderDAOWalletMock.new()
 
     // DEPLOY ERC20 TOKENS
     xxxERC = await Token.new(
@@ -201,7 +202,7 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
       userOne,                                      // address _owner,
       'TEST ETH FUND',                              // string _name,
       successFee,                                   // uint256 _successFee,
-      COT_DAO_WALLET.address,                       // address _platformAddress,
+      COT_DAO_WALLET.address,                               // address _platformAddress,
       exchangePortal.address,                       // address _exchangePortalAddress,
       poolPortal.address,                           // address _poolPortalAddress,
       defiPortal.address,
@@ -243,8 +244,8 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
 
     })
 
-    it('Correct version 7', async function() {
-      assert.equal(await smartFundETH.version(), 7)
+    it('Correct version 9', async function() {
+      assert.equal(await smartFundETH.version(), 9)
     })
 
     it('Correct size type', async function() {
@@ -305,6 +306,19 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
       assert.equal(Number(successFee), 1000)
       assert.equal(Number(platformFee), 1000)
       assert.equal(Number(successFee), Number(platformFee))
+    })
+  })
+
+  describe('Update fund name', function() {
+    it('Not owner can not update fund name', async function() {
+      await smartFundETH.updateFundName('NEW NAME FOR ETH FUND', { from:userTwo })
+      .should.be.rejectedWith(EVMRevert)
+    })
+
+    it('Owner can update fund name', async function() {
+      assert.equal(await smartFundETH.name(), 'TEST ETH FUND')
+      await smartFundETH.updateFundName('NEW NAME FOR ETH FUND')
+      assert.equal(await smartFundETH.name(), 'NEW NAME FOR ETH FUND')
     })
   })
 
@@ -674,6 +688,265 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
       })
   })
 
+  describe('Swapper roles', function() {
+    it('NOT owner can not update swapper', async function() {
+       await smartFundETH.updateSwapperStatus(userTwo, true, {from:userTwo})
+       .should.be.rejectedWith(EVMRevert)
+    })
+
+    it('NOT Swapper can NOT trade ', async function() {
+      // deploy smartFund with 10% success fee
+      await deployContracts(1000)
+      // send some assets in dex
+      await xxxERC.transfer(exchangePortal.address, toWei(String(50)))
+
+      // deposit in fund
+      await smartFundETH.deposit({ from: userOne, value: toWei(String(1)) })
+
+      assert.equal(await web3.eth.getBalance(smartFundETH.address), toWei(String(1)))
+
+      // get proof and position for dest token
+      const proofXXX = MerkleTREE.getProof(keccak256(xxxERC.address)).map(x => buf2hex(x.data))
+      const positionXXX = MerkleTREE.getProof(keccak256(xxxERC.address)).map(x => x.position === 'right' ? 1 : 0)
+
+      await smartFundETH.trade(
+        ETH_TOKEN_ADDRESS,
+        toWei(String(1)),
+        xxxERC.address,
+        0,
+        proofXXX,
+        positionXXX,
+        PARASWAP_MOCK_ADDITIONAL_PARAMS,
+        1,
+        {
+          from: userTwo,
+        }
+      ).should.be.rejectedWith(EVMRevert)
+    })
+
+    it('Swapper can trade', async function() {
+      // deploy smartFund with 10% success fee
+      await deployContracts(1000)
+      // add swapper
+      await smartFundETH.updateSwapperStatus(userTwo, true)
+      // send some assets in dex
+      await xxxERC.transfer(exchangePortal.address, toWei(String(50)))
+
+      // deposit in fund
+      await smartFundETH.deposit({ from: userOne, value: toWei(String(1)) })
+
+      assert.equal(await web3.eth.getBalance(smartFundETH.address), toWei(String(1)))
+
+      // get proof and position for dest token
+      const proofXXX = MerkleTREE.getProof(keccak256(xxxERC.address)).map(x => buf2hex(x.data))
+      const positionXXX = MerkleTREE.getProof(keccak256(xxxERC.address)).map(x => x.position === 'right' ? 1 : 0)
+
+      await smartFundETH.trade(
+        ETH_TOKEN_ADDRESS,
+        toWei(String(1)),
+        xxxERC.address,
+        0,
+        proofXXX,
+        positionXXX,
+        PARASWAP_MOCK_ADDITIONAL_PARAMS,
+        1,
+        {
+          from: userTwo,
+        }
+      )
+    })
+
+    it('Swapper can buy/sell pool', async function() {
+      // deploy smartFund with 10% success fee
+      await deployContracts(1000)
+      // add swapper
+      await smartFundETH.updateSwapperStatus(userTwo, true)
+      // send some assets to pool portal
+      await BNT.transfer(exchangePortal.address, toWei(String(1)))
+
+      await smartFundETH.deposit({ from: userOne, value: toWei(String(2)) })
+
+      // get proof and position for dest token
+      const proofBNT = MerkleTREE.getProof(keccak256(BNT.address)).map(x => buf2hex(x.data))
+      const positionBNT = MerkleTREE.getProof(keccak256(BNT.address)).map(x => x.position === 'right' ? 1 : 0)
+
+      // get 1 BNT from exchange portal
+      await smartFundETH.trade(
+        ETH_TOKEN_ADDRESS,
+        toWei(String(1)),
+        BNT.address,
+        0,
+        proofBNT,
+        positionBNT,
+        PARASWAP_MOCK_ADDITIONAL_PARAMS,
+        1,
+        {
+          from: userTwo
+        }
+      )
+
+      // Check balance before buy pool
+      assert.equal(await BNT.balanceOf(smartFundETH.address), toWei(String(1)))
+      assert.equal(await ETHBNT.balanceOf(smartFundETH.address), 0)
+
+      const connectorsAddress = ["0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", BNT.address]
+      const connectorsAmount = [toWei(String(1)), toWei(String(1))]
+
+      // buy BNT pool
+      await smartFundETH.buyPool(toWei(String(2)), 0, ETHBNT.address, connectorsAddress, connectorsAmount, [], "0x", { from:userTwo })
+      // after buy BNT pool recieved asset should be marked as BANCOR POOL
+      assert.equal(await tokensType.getType(ETHBNT.address), TOKEN_KEY_BANCOR_POOL)
+
+      // Check balance after buy pool
+      assert.equal(await BNT.balanceOf(smartFundETH.address), 0)
+      assert.equal(await web3.eth.getBalance(smartFundETH.address), 0)
+      assert.equal(await ETHBNT.balanceOf(smartFundETH.address), toWei(String(2)))
+
+      // sell pool
+      await smartFundETH.sellPool(toWei(String(2)), 0, ETHBNT.address, [], "0x", { from:userTwo })
+
+      // Check balance after sell pool
+      assert.equal(await BNT.balanceOf(smartFundETH.address), toWei(String(1)))
+      assert.equal(await web3.eth.getBalance(smartFundETH.address), toWei(String(1)))
+      assert.equal(await ETHBNT.balanceOf(smartFundETH.address), 0)
+    })
+
+    it('NOT swapper should NOT be able call defi portal', async function() {
+     // deploy smartFund with 10% success fee
+     await deployContracts(1000)
+     // send some assets to pool portal
+     await DAI.transfer(exchangePortal.address, toWei(String(1)))
+     await smartFundETH.deposit({ from: userOne, value: toWei(String(1)) })
+
+     // get proof and position for dest token
+     const proofDAI = MerkleTREE.getProof(keccak256(DAI.address)).map(x => buf2hex(x.data))
+     const positionDAI = MerkleTREE.getProof(keccak256(DAI.address)).map(x => x.position === 'right' ? 1 : 0)
+
+     // get 1 DAI from exchange portal
+     await smartFundETH.trade(
+       ETH_TOKEN_ADDRESS,
+       toWei(String(1)),
+       DAI.address,
+       0,
+       proofDAI,
+       positionDAI,
+       PARASWAP_MOCK_ADDITIONAL_PARAMS,
+       1,
+       {
+         from: userOne,
+       }
+     )
+
+     // Check balance before buy yDAI
+     assert.equal(await DAI.balanceOf(smartFundETH.address), toWei(String(1)))
+     assert.equal(await yDAI.balanceOf(smartFundETH.address), 0)
+
+     const tokenAddressBefore = await smartFundETH.getAllTokenAddresses()
+
+     // BUY yDAI
+     await smartFundETH.callDefiPortal(
+       [DAI.address],
+       [toWei(String(1))],
+       ["0x0000000000000000000000000000000000000000000000000000000000000000"],
+       web3.eth.abi.encodeParameters(
+        ['address', 'uint256'],
+        [yDAI.address, toWei(String(1))]
+      ),
+      { from:userTwo }
+     ).should.be.rejectedWith(EVMRevert)
+   })
+
+   it('New swapper should be able call defi portal', async function() {
+    // deploy smartFund with 10% success fee
+    await deployContracts(1000)
+    // add new swapper
+    await smartFundETH.updateSwapperStatus(userTwo, true)
+    // send some assets to pool portal
+    await DAI.transfer(exchangePortal.address, toWei(String(1)))
+    await smartFundETH.deposit({ from: userOne, value: toWei(String(1)) })
+
+    // get proof and position for dest token
+    const proofDAI = MerkleTREE.getProof(keccak256(DAI.address)).map(x => buf2hex(x.data))
+    const positionDAI = MerkleTREE.getProof(keccak256(DAI.address)).map(x => x.position === 'right' ? 1 : 0)
+
+    // get 1 DAI from exchange portal
+    await smartFundETH.trade(
+      ETH_TOKEN_ADDRESS,
+      toWei(String(1)),
+      DAI.address,
+      0,
+      proofDAI,
+      positionDAI,
+      PARASWAP_MOCK_ADDITIONAL_PARAMS,
+      1,
+      {
+        from: userOne,
+      }
+    )
+
+    // Check balance before buy yDAI
+    assert.equal(await DAI.balanceOf(smartFundETH.address), toWei(String(1)))
+    assert.equal(await yDAI.balanceOf(smartFundETH.address), 0)
+
+    const tokenAddressBefore = await smartFundETH.getAllTokenAddresses()
+
+    // BUY yDAI
+    await smartFundETH.callDefiPortal(
+      [DAI.address],
+      [toWei(String(1))],
+      ["0x0000000000000000000000000000000000000000000000000000000000000000"],
+      web3.eth.abi.encodeParameters(
+       ['address', 'uint256'],
+       [yDAI.address, toWei(String(1))]
+     ),
+     { from:userTwo }
+    ).should.be.fulfilled
+
+    const tokenAddressAfter = await smartFundETH.getAllTokenAddresses()
+
+    // yDAI shoul be added in fund
+    assert.isTrue(tokenAddressAfter.length > tokenAddressBefore.length)
+
+    // Check balance after buy yDAI
+    assert.equal(fromWei(await DAI.balanceOf(smartFundETH.address)), 0)
+    assert.equal(await yDAI.balanceOf(smartFundETH.address), toWei(String(1)))
+    })
+
+    it('Removed swapper can not trade ', async function() {
+      // deploy smartFund with 10% success fee
+      await deployContracts(1000)
+      // add swapper
+      await smartFundETH.updateSwapperStatus(userTwo, true)
+      // remove swapper
+      await smartFundETH.updateSwapperStatus(userTwo, false)
+      // send some assets in dex
+      await xxxERC.transfer(exchangePortal.address, toWei(String(50)))
+
+      // deposit in fund
+      await smartFundETH.deposit({ from: userOne, value: toWei(String(1)) })
+
+      assert.equal(await web3.eth.getBalance(smartFundETH.address), toWei(String(1)))
+
+      // get proof and position for dest token
+      const proofXXX = MerkleTREE.getProof(keccak256(xxxERC.address)).map(x => buf2hex(x.data))
+      const positionXXX = MerkleTREE.getProof(keccak256(xxxERC.address)).map(x => x.position === 'right' ? 1 : 0)
+
+      await smartFundETH.trade(
+        ETH_TOKEN_ADDRESS,
+        toWei(String(1)),
+        xxxERC.address,
+        0,
+        proofXXX,
+        positionXXX,
+        PARASWAP_MOCK_ADDITIONAL_PARAMS,
+        1,
+        {
+          from: userTwo,
+        }
+      ).should.be.rejectedWith(EVMRevert)
+    })
+  })
+
   describe('Withdraw', function() {
    it('should be able to withdraw all deposited funds', async function() {
       const totalShares = await smartFundETH.totalShares()
@@ -810,6 +1083,27 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
       assert.equal(fundValue, 180)
       assert.equal(fundManagerRemainingCut, 0)
       assert.equal(fundManagerTotalCut, 20)
+    })
+
+    it('should be able to calcualte calculateFundManagerCut fund manager profit if profit go up manager withdraw then profit go down', async function() {
+      await deployContracts(2000)
+      await fundManagerTest(20)
+
+      await smartFundETH.fundManagerWithdraw({ from: userOne })
+      await smartFundETH.calculateFundManagerCut()
+
+      // set big profit
+      await exchangePortal.setRatio(1, 100000000)
+
+      await smartFundETH.calculateFundManagerCut()
+      // take cut
+      await smartFundETH.fundManagerWithdraw({ from: userOne })
+      await smartFundETH.calculateFundManagerCut()
+
+      // set smal profit
+      await exchangePortal.setRatio(1, 1001)
+
+      await smartFundETH.calculateFundManagerCut()
     })
   })
 
@@ -973,74 +1267,6 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
 
       assert.equal(await smartFundETH.calculateAddressProfit(userTwo), 0)
       assert.equal(await smartFundETH.calculateAddressProfit(userThree), toWei(String(1)))
-    })
-  })
-
-  describe('BUY/SELL YEARN Finance', function() {
-    it('should be able buy/sell Yearn yDAI token', async function() {
-      // send some assets to pool portal
-      await DAI.transfer(exchangePortal.address, toWei(String(1)))
-      await smartFundETH.deposit({ from: userOne, value: toWei(String(1)) })
-
-      // get proof and position for dest token
-      const proofDAI = MerkleTREE.getProof(keccak256(DAI.address)).map(x => buf2hex(x.data))
-      const positionDAI = MerkleTREE.getProof(keccak256(DAI.address)).map(x => x.position === 'right' ? 1 : 0)
-
-      // get 1 DAI from exchange portal
-      await smartFundETH.trade(
-        ETH_TOKEN_ADDRESS,
-        toWei(String(1)),
-        DAI.address,
-        0,
-        proofDAI,
-        positionDAI,
-        PARASWAP_MOCK_ADDITIONAL_PARAMS,
-        1,
-        {
-          from: userOne,
-        }
-      )
-
-      // Check balance before buy yDAI
-      assert.equal(await DAI.balanceOf(smartFundETH.address), toWei(String(1)))
-      assert.equal(await yDAI.balanceOf(smartFundETH.address), 0)
-
-      const tokenAddressBefore = await smartFundETH.getAllTokenAddresses()
-
-      // BUY yDAI
-      await smartFundETH.callDefiPortal(
-        [DAI.address],
-        [toWei(String(1))],
-        ["0x0000000000000000000000000000000000000000000000000000000000000000"],
-        web3.eth.abi.encodeParameters(
-         ['address', 'uint256'],
-         [yDAI.address, toWei(String(1))]
-        )
-      ).should.be.fulfilled
-
-      const tokenAddressAfter = await smartFundETH.getAllTokenAddresses()
-
-      // yDAI shoul be added in fund
-      assert.isTrue(tokenAddressAfter.length > tokenAddressBefore.length)
-
-      // Check balance after buy yDAI
-      assert.equal(fromWei(await DAI.balanceOf(smartFundETH.address)), 0)
-      assert.equal(await yDAI.balanceOf(smartFundETH.address), toWei(String(1)))
-
-      // SELL yDAI
-      await smartFundETH.callDefiPortal(
-        [yDAI.address],
-        [toWei(String(1))],
-        ["0x0000000000000000000000000000000000000000000000000000000000000001"],
-        web3.eth.abi.encodeParameters(
-         ['uint256'],
-         [toWei(String(1))]
-        )
-      ).should.be.fulfilled
-
-      // Check balance after sell yDAI
-      assert.equal(await DAI.balanceOf(smartFundETH.address), toWei(String(1)))
-      assert.equal(await yDAI.balanceOf(smartFundETH.address), 0)
     })
   })
 
@@ -1384,6 +1610,8 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
     it('Platform can get 10% from ETH profit', async function() {
       // deploy smartFund with 10% success fee and platform fee
       await deployContracts(1000)
+      // fund should not have any balance
+      assert.equal(fromWei(await web3.eth.getBalance(COT_DAO_WALLET.address)), 0)
       // give exchange portal contract some money
       await xxxERC.transfer(exchangePortal.address, toWei(String(50)))
       await exchangePortal.pay({ from: userOne, value: toWei(String(3))})

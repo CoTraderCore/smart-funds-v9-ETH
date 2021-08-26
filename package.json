@@ -39,6 +39,7 @@
     "ethereumjs-util": "^5.2.0",
     "ethjs-abi": "^0.2.1",
     "ganache-cli": "^6.9.1",
+    "ganache-time-traveler": "^1.0.15",
     "keccak256": "^1.0.0",
     "merkletreejs": "^0.2.8",
     "solidity-coverage": "^0.5.4",

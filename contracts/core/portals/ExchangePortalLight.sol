@@ -1,3 +1,5 @@
+// Light portal without tokens type storage and trade only erc20
+
 pragma solidity ^0.6.12;
 
 /*
@@ -12,19 +14,14 @@ import "../../zeppelin-solidity/contracts/math/SafeMath.sol";
 
 import "../interfaces/IPricePortal.sol";
 import "../interfaces/ExchangePortalInterface.sol";
-import "../interfaces/DefiPortalInterface.sol";
-import "../interfaces/PoolPortalViewInterface.sol";
-import "../interfaces/ITokensTypeStorage.sol";
 import "../interfaces/IMerkleTreeTokensVerification.sol";
+import "../../uniswap/interfaces/IUniswapV2Router.sol";
 
 
-contract ExchangePortal is ExchangePortalInterface, Ownable {
+contract ExchangePortalLight is ExchangePortalInterface, Ownable {
   using SafeMath for uint256;
 
   uint public version = 5;
-
-  // Contract for handle tokens types
-  ITokensTypeStorage public tokensTypes;
 
   // Contract for merkle tree white list verification
   IMerkleTreeTokensVerification public merkleTreeWhiteList;
@@ -32,17 +29,17 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
   // 1 inch protocol for calldata
   address public OneInchRoute;
 
-  IPricePortal public pricePortal;
+  address public WETH;
+  address public coswapRouter;
+  address public pancakeRouter;
 
-  // CoTrader portals
-  PoolPortalViewInterface public poolPortal;
-  DefiPortalInterface public defiPortal;
+  IPricePortal public pricePortal;
 
 
   // Enum
   // NOTE: You can add a new type at the end, but DO NOT CHANGE this order,
   // because order has dependency in other contracts like ConvertPortal
-  enum ExchangeType { OneInchRoute }
+  enum ExchangeType { OneInchRoute, CoSwap, Pancake }
 
   // Trade event
   event Trade(
@@ -65,30 +62,27 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
 
   /**
   * @dev contructor
-  *
-  * @param _defiPortal             address of defiPortal contract
-  * @param _poolPortal             address of pool portal
   * @param _pricePortal            address of price portal
   * @param _OneInchRoute           address of oneInch ETH contract
-  * @param _tokensTypes            address of the ITokensTypeStorage
   * @param _merkleTreeWhiteList    address of the IMerkleTreeWhiteList
+  * @param _WETH                   WBNB address
   */
   constructor(
-    address _defiPortal,
-    address _poolPortal,
     address _pricePortal,
     address _OneInchRoute,
-    address _tokensTypes,
-    address _merkleTreeWhiteList
+    address _merkleTreeWhiteList,
+    address _WETH,
+    address _coswapRouter,
+    address _pancakeRouter
     )
     public
   {
-    defiPortal = DefiPortalInterface(_defiPortal);
-    poolPortal = PoolPortalViewInterface(_poolPortal);
     pricePortal = IPricePortal(_pricePortal);
     OneInchRoute = _OneInchRoute;
-    tokensTypes = ITokensTypeStorage(_tokensTypes);
     merkleTreeWhiteList = IMerkleTreeTokensVerification(_merkleTreeWhiteList);
+    WETH = _WETH;
+    coswapRouter = _coswapRouter;
+    pancakeRouter = _pancakeRouter;
   }
 
 
@@ -137,6 +131,7 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
       require(msg.value == 0);
     }
 
+    // trade via 1inch
     if (_type == uint(ExchangeType.OneInchRoute)){
       receivedAmount = _tradeViaOneInchRoute(
           address(_source),
@@ -146,8 +141,28 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
       );
     }
 
+    // trade via CoSwap
+    else if(_type == uint(ExchangeType.CoSwap)){
+      receivedAmount = _tradeViaUniswapV2BasedDEX(
+        address(_source),
+        address(_destination),
+        _sourceAmount,
+        coswapRouter
+      );
+    }
+
+    // trade via Pancake
+    else if(_type == uint(ExchangeType.Pancake)){
+      receivedAmount = _tradeViaUniswapV2BasedDEX(
+        address(_source),
+        address(_destination),
+        _sourceAmount,
+        pancakeRouter
+      );
+    }
+
+    // unknown exchange type
     else {
-      // unknown exchange type
       revert("Unknown type");
     }
 
@@ -205,8 +220,63 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
      require(success, "Fail 1inch call");
      // get received amount
      destinationReceived = tokenBalance(IERC20(destinationToken));
-     // set token type
-     tokensTypes.addNewTokenType(destinationToken, "CRYPTOCURRENCY");
+  }
+
+  function _tradeViaUniswapV2BasedDEX(
+    address sourceToken,
+    address destinationToken,
+    uint256 sourceAmount,
+    address router
+  )
+    private
+    returns(uint256 destinationReceived)
+  {
+     address[] memory path = new address[](2);
+
+     // swap from ETH
+     if(IERC20(sourceToken) == IERC20(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)){
+       path[0] = WETH;
+       path[1] = destinationToken;
+
+       IUniswapV2Router(router).swapExactETHForTokens.value(sourceAmount)(
+         1,
+         path,
+         address(this),
+         now + 15 minutes
+       );
+     }
+     // swap to ETH
+     else if(IERC20(destinationToken) == IERC20(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)){
+       path[0] = sourceToken;
+       path[1] = WETH;
+
+       _transferFromSenderAndApproveTo(IERC20(sourceToken), sourceAmount, router);
+
+       IUniswapV2Router(router).swapExactTokensForETH(
+         sourceAmount,
+         1,
+         path,
+         address(this),
+         now + 15 minutes
+       );
+     }
+     // swap between ERC20 only
+     else{
+       path[0] = sourceToken;
+       path[1] = destinationToken;
+
+       _transferFromSenderAndApproveTo(IERC20(sourceToken), sourceAmount, router);
+
+       IUniswapV2Router(router).swapExactTokensForTokens(
+           sourceAmount,
+           1,
+           path,
+           address(this),
+           now + 15 minutes
+       );
+     }
+
+     destinationReceived = tokenBalance(IERC20(destinationToken));
   }
 
   // Facilitates for send source remains
@@ -274,7 +344,7 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
   * @param _to        Address of token we're getting the value in
   * @param _amount    The amount of _from
   *
-  * @return best price from 1inch for ERC20, or ratio for Uniswap and Bancor pools
+  * @return ration between from and to
   */
   function getValue(address _from, address _to, uint256 _amount)
     public
@@ -282,108 +352,9 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
     view
     returns (uint256)
   {
-    if(_amount > 0){
-      // get asset type
-      bytes32 assetType = tokensTypes.getType(_from);
-
-      // get value by asset type
-      if(assetType == bytes32("CRYPTOCURRENCY")){
-        return getValueViaDEXsAgregators(_from, _to, _amount);
-      }
-      else{
-        // Unmarked type, try find value
-        return findValue(_from, _to, _amount);
-      }
-    }
-    else{
-      return 0;
-    }
+    return pricePortal.getPrice(_from, _to, _amount);
   }
 
-  /**
-  * @dev find the ratio by amount of token _from in token _to trying all available methods
-  *
-  * @param _from      Address of token we're converting from
-  * @param _to        Address of token we're getting the value in
-  * @param _amount    The amount of _from
-  *
-  * @return best price from 1inch for ERC20, or ratio for Uniswap and Bancor pools
-  */
-  function findValue(address _from, address _to, uint256 _amount) private view returns (uint256) {
-     if(_amount > 0){
-       // re-check from aggregators for unknown type
-       uint256 aggregatorValue = getValueViaDEXsAgregators(_from, _to, _amount);
-       if(aggregatorValue > 0)
-          return aggregatorValue;
-       // Check at first value from defi portal, maybe there are new defi protocols
-       // If defiValue return 0 continue check from another sources
-       uint256 defiValue = defiPortal.getValue(_from, _to, _amount);
-       if(defiValue > 0)
-          return defiValue;
-
-       // Uniswap V2 pools return 0 if these is not a Uniswap V2 pool
-       return getValueForUniswapV2Pools(_from, _to, _amount);
-     }
-     else{
-       return 0;
-     }
-  }
-
-
-  // helper for get value via 1inch
-  // in this interface can be added more DEXs aggregators
-  function getValueViaDEXsAgregators(
-    address _from,
-    address _to,
-    uint256 _amount
-  )
-  public view returns (uint256){
-    // if direction the same, just return amount
-    if(_from == _to)
-       return _amount;
-
-    // try get value via 1inch
-    if(_amount > 0){
-      // try get value from 1inch aggregator
-      return pricePortal.getPrice(_from, _to, _amount);
-    }
-    else{
-      return 0;
-    }
-  }
-
-
-  // helper for get ratio between pools in Uniswap network version 2
-  // _from - should be uniswap pool address
-  function getValueForUniswapV2Pools(
-    address _from,
-    address _to,
-    uint256 _amount
-  )
-  public
-  view
-  returns (uint256)
-  {
-    // get connectors amount by pool share
-    try poolPortal.getUniswapV2ConnectorsAmountByPoolAmount(
-      _amount,
-      _from
-    ) returns (
-      uint256 tokenAmountOne,
-      uint256 tokenAmountTwo,
-      address tokenAddressOne,
-      address tokenAddressTwo
-      )
-    {
-      // convert connectors amount via DEX aggregator
-      uint256 amountOne = getValueViaDEXsAgregators(tokenAddressOne, _to, tokenAmountOne);
-      uint256 amountTwo = getValueViaDEXsAgregators(tokenAddressTwo, _to, tokenAmountTwo);
-      // return value
-      return amountOne + amountTwo;
-    }catch{
-      return 0;
-    }
-  }
 
   /**
   * @dev Gets the total value of array of tokens and amounts
@@ -425,21 +396,6 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
   // owner can change price portal
   function setNewPricePortal(address _pricePortal) external onlyOwner {
     pricePortal = IPricePortal(_pricePortal);
-  }
-
-  // owner can change oneInch
-  function setNewOneInchRoute(address _OneInchRoute) external onlyOwner {
-    OneInchRoute = _OneInchRoute;
-  }
-
-  // owner can set new pool portal
-  function setNewPoolPortal(address _poolPortal) external onlyOwner {
-    poolPortal = PoolPortalViewInterface(_poolPortal);
-  }
-
-  // owner can set new defi portal
-  function setNewDefiPortal(address _defiPortal) external onlyOwner {
-    defiPortal = DefiPortalInterface(_defiPortal);
   }
 
   // fallback payable function to receive ether from other contract addresses

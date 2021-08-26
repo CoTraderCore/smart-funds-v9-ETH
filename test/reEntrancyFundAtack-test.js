@@ -42,13 +42,13 @@ const ExchangePortalMock = artifacts.require('./portalsMock/ExchangePortalMock')
 const PoolPortalMock = artifacts.require('./portalsMock/PoolPortalMock')
 const CoTraderDAOWalletMock = artifacts.require('./portalsMock/CoTraderDAOWalletMock')
 
+const COT_DAO_WALLET = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
 
 let xxxERC,
     DAI,
     exchangePortal,
     smartFundETH,
     BNT,
-    COT_DAO_WALLET,
     yyyERC,
     atackContract,
     atackContractAsManager,
@@ -59,8 +59,6 @@ let xxxERC,
 contract('ReEntrancy Atack', function([userOne, userTwo, userThree]) {
 
   async function deployContracts(successFee=1000, platformFee=0){
-    COT_DAO_WALLET = await CoTraderDAOWalletMock.new()
-
     // Deploy xxx Token
     xxxERC = await Token.new(
       "xxxERC20",
@@ -126,7 +124,7 @@ contract('ReEntrancy Atack', function([userOne, userTwo, userThree]) {
       userOne,                                      // address _owner,
       'TEST ETH FUND',                              // string _name,
       successFee,                                   // uint256 _successFee,
-      COT_DAO_WALLET.address,                       // address _platformAddress,
+      COT_DAO_WALLET,                       // address _platformAddress,
       exchangePortal.address,                       // address _exchangePortalAddress,
       '0x0000000000000000000000000000000000000000', // defi portal
       '0x0000000000000000000000000000000000000000', // poolPortalAddress,

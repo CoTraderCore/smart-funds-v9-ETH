@@ -50,9 +50,6 @@ abstract contract SmartFundCore is Ownable, IERC20 {
   // The Smart Contract which stores the addresses of all the authorized Exchange Portals
   PermittedAddressesInterface public permittedAddresses;
 
-  // portals recognizes ETH by this address
-  IERC20 constant internal ETH_TOKEN_ADDRESS = IERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
-
   // For ERC20 compliance
   string public name;
 
@@ -84,7 +81,7 @@ abstract contract SmartFundCore is Ownable, IERC20 {
   // addresses to be able to invest in their fund
   mapping (address => bool) public whitelist;
 
-  uint public version = 7;
+  uint public version = 9;
 
   // the total number of shares in the fund
   uint256 public totalShares = 0;
@@ -112,6 +109,9 @@ abstract contract SmartFundCore is Ownable, IERC20 {
   // total `depositToken` deposited - total `depositToken` withdrawn
   mapping (address => int256) public addressesNetDeposit;
 
+  // owner can add/remove swapper
+  mapping (address => bool) public swappers;
+
   // Events
   event DefiCall(
     string eventType,
@@ -138,6 +138,10 @@ abstract contract SmartFundCore is Ownable, IERC20 {
   event Trade(address src, uint256 srcAmount, address dest, uint256 destReceived);
   event SmartFundCreated(address indexed owner);
 
+  // modifier role which allow call trade, buy/sell pool, call defi
+  function onlySwapper() internal view {
+    require(swappers[msg.sender], "Not swapper");
+  }
 
   constructor(
     address _owner,
@@ -152,19 +156,15 @@ abstract contract SmartFundCore is Ownable, IERC20 {
     bool    _isRequireTradeVerification
   )public{
     // never allow a 100% fee
-    require(_successFee < TOTAL_PERCENTAGE);
+    require(_successFee < TOTAL_PERCENTAGE, "100% fee");
+    require(_owner != address(0), "owner 0x");
 
     name = _name;
     successFee = _successFee;
-    platformFee = _successFee; // platform fee the same as manager fee 
+    platformFee = _successFee; // platform fee the same as manager fee
 
-    // Init manager
-    if(_owner == address(0)){
-      transferOwnership(msg.sender);
-    }
-    else{
-      transferOwnership(_owner);
-    }
+    // Init owner
+    transferOwnership(_owner);
 
     // Init platform address
     if(_platformAddress == address(0)){
@@ -175,7 +175,7 @@ abstract contract SmartFundCore is Ownable, IERC20 {
     }
 
     // Initial Token is Ether
-    tokenAddresses.push(address(ETH_TOKEN_ADDRESS));
+    tokenAddresses.push(address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE));
 
     // Initial interfaces
     exchangePortal = ExchangePortalInterface(_exchangePortalAddress);
@@ -189,14 +189,17 @@ abstract contract SmartFundCore is Ownable, IERC20 {
     // Initial check if fund require trade verification or not
     isRequireTradeVerification = _isRequireTradeVerification;
 
-    emit SmartFundCreated(owner());
+    // Init owner as swapper
+    swappers[_owner] = true;
+
+    // Emit event
+    emit SmartFundCreated(_owner);
   }
 
   // virtual methods
   // USD and ETH based funds have different implements of this methods
   function calculateFundValue() public virtual view returns (uint256);
   function getTokenValue(IERC20 _token) public virtual view returns (uint256);
-
 
   /**
   * @dev Sends (_mul/_div) of every token (and ether) the funds holds to _withdrawAddress
@@ -217,7 +220,10 @@ abstract contract SmartFundCore is Ownable, IERC20 {
     internal
     returns (uint256)
   {
-    for (uint8 i = 1; i < tokenAddresses.length; i++) {
+    // cache global var for safe gas
+    uint256 tokenAddressesLength = tokenAddresses.length;
+
+    for (uint8 i = 1; i < tokenAddressesLength; i++) {
       // Transfer that _mul/_div of each token we hold to the user
       IERC20 token = IERC20(tokenAddresses[i]);
       uint256 fundAmount = token.balanceOf(address(this));
@@ -247,14 +253,17 @@ abstract contract SmartFundCore is Ownable, IERC20 {
   * @param _percentageWithdraw    The percentage of the users shares to withdraw.
   */
   function withdraw(uint256 _percentageWithdraw) external {
-    require(totalShares != 0, "EMPTY_SHARES");
-    require(_percentageWithdraw <= TOTAL_PERCENTAGE, "INCORRECT_PERCENT");
+    // cache global variables for a save gas
+    uint256 CACHE_TOTAL_PERCENTAGE = TOTAL_PERCENTAGE;
 
-    uint256 percentageWithdraw = (_percentageWithdraw == 0) ? TOTAL_PERCENTAGE : _percentageWithdraw;
+    require(totalShares != 0, "EMPTY_SHARES");
+    require(_percentageWithdraw <= CACHE_TOTAL_PERCENTAGE, "INCORRECT_PERCENT");
+
+    uint256 percentageWithdraw = (_percentageWithdraw == 0) ? CACHE_TOTAL_PERCENTAGE : _percentageWithdraw;
 
     uint256 addressShares = addressToShares[msg.sender];
 
-    uint256 numberOfWithdrawShares = addressShares.mul(percentageWithdraw).div(TOTAL_PERCENTAGE);
+    uint256 numberOfWithdrawShares = addressShares.mul(percentageWithdraw).div(CACHE_TOTAL_PERCENTAGE);
 
     uint256 fundManagerCut;
     uint256 fundValue;
@@ -311,12 +320,15 @@ abstract contract SmartFundCore is Ownable, IERC20 {
     uint256[] calldata _positions,
     bytes calldata _additionalData,
     uint256 _minReturn
-  ) external onlyOwner {
+  )
+    external
+  {
+    onlySwapper();
     require(_minReturn > 0, "MIN_RETURN_0");
 
     uint256 receivedAmount;
 
-    if (_source == ETH_TOKEN_ADDRESS) {
+    if (_source == IERC20(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
       // Make sure fund contains enough ether
       require(address(this).balance >= _sourceAmount, "NOT_ENOUGH_ETH");
       // Call trade on ExchangePortal along with ether
@@ -379,7 +391,9 @@ abstract contract SmartFundCore is Ownable, IERC20 {
    bytes32[] calldata _additionalArgs,
    bytes calldata     _additionData
   )
-  external onlyOwner {
+    external
+  {
+   onlySwapper();
    // for determine the exact number of received pool
    uint256 poolAmountReceive;
 
@@ -451,7 +465,9 @@ abstract contract SmartFundCore is Ownable, IERC20 {
     bytes32[] calldata _additionalArgs,
     bytes calldata _additionData
   )
-  external onlyOwner {
+    external
+  {
+    onlySwapper();
     // approve pool
     _poolToken.approve(address(poolPortal), _amount);
 
@@ -495,8 +511,8 @@ abstract contract SmartFundCore is Ownable, IERC20 {
     bytes calldata _additionalData
   )
     external
-    onlyOwner
   {
+    onlySwapper();
     // event data
     string memory eventType;
     address[] memory tokensToReceive;
@@ -560,7 +576,7 @@ abstract contract SmartFundCore is Ownable, IERC20 {
     returns (uint256 etherAmount)
   {
     for(uint8 i = 0; i < addresses.length; i++){
-      if(addresses[i] != address(ETH_TOKEN_ADDRESS)){
+      if(addresses[i] != address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)){
         // approve
         IERC20(addresses[i]).approve(spender, amounts[i]);
       }
@@ -582,7 +598,7 @@ abstract contract SmartFundCore is Ownable, IERC20 {
   */
   function _addToken(address _token) internal {
     // don't add token to if we already have it in our list
-    if (tokensTraded[_token] || (_token == address(ETH_TOKEN_ADDRESS)))
+    if (tokensTraded[_token] || (_token == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)))
       return;
 
     tokensTraded[_token] = true;
@@ -601,7 +617,7 @@ abstract contract SmartFundCore is Ownable, IERC20 {
   *
   */
   function removeToken(address _token, uint256 _tokenIndex) public onlyOwner {
-    require(_token != address(ETH_TOKEN_ADDRESS));
+    require(_token != address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE));
     require(tokensTraded[_token]);
     require(IERC20(_token).balanceOf(address(this)) == 0);
     require(tokenAddresses[_tokenIndex] == _token);
@@ -682,7 +698,10 @@ abstract contract SmartFundCore is Ownable, IERC20 {
       uint256 profit = uint256(int256(fundValue) - curtotalWeiDeposited);
       // remove the money already taken by the fund manager and take percentage
       fundManagerTotalCut = profit.mul(successFee).div(TOTAL_PERCENTAGE);
-      fundManagerRemainingCut = fundManagerTotalCut.sub(fundManagerCashedOut);
+      // If manager alredy cut from the best profit period, just return 0
+      fundManagerRemainingCut = fundManagerTotalCut > fundManagerCashedOut
+      ? fundManagerTotalCut.sub(fundManagerCashedOut)
+      : 0;
     }
   }
 
@@ -734,7 +753,7 @@ abstract contract SmartFundCore is Ownable, IERC20 {
 
   // This method was added to easily record the funds token balances, may (should?) be removed in the future
   function getFundTokenHolding(IERC20 _token) external view returns (uint256) {
-    if (_token == ETH_TOKEN_ADDRESS)
+    if (_token == IERC20(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE))
       return address(this).balance;
     return _token.balanceOf(address(this));
   }
@@ -765,7 +784,7 @@ abstract contract SmartFundCore is Ownable, IERC20 {
   *
   * @param _newExchangePortalAddress    The address of the new permitted exchange portal to use
   */
-  function setNewExchangePortal(address _newExchangePortalAddress) public onlyOwner {
+  function setNewExchangePortal(address _newExchangePortalAddress) external onlyOwner {
     // Require correct permitted address type
     require(permittedAddresses.isMatchTypes(_newExchangePortalAddress, 1), "WRONG_ADDRESS");
     // Set new
@@ -777,7 +796,7 @@ abstract contract SmartFundCore is Ownable, IERC20 {
   *
   * @param _newPoolPortal   The address of the new permitted pool portal to use
   */
-  function setNewPoolPortal(address _newPoolPortal) public onlyOwner {
+  function setNewPoolPortal(address _newPoolPortal) external onlyOwner {
     // Require correct permitted address type
     require(permittedAddresses.isMatchTypes(_newPoolPortal, 2), "WRONG_ADDRESS");
     // Set new
@@ -790,11 +809,30 @@ abstract contract SmartFundCore is Ownable, IERC20 {
   *
   * @param _newDefiPortalAddress    The address of the new permitted defi portal to use
   */
-  function setNewDefiPortal(address _newDefiPortalAddress) public onlyOwner {
+  function setNewDefiPortal(address _newDefiPortalAddress) external onlyOwner {
     // Require correct permitted address type
     require(permittedAddresses.isMatchTypes(_newDefiPortalAddress, 3), "WRONG_ADDRESS");
     // Set new
     defiPortal = DefiPortalInterface(_newDefiPortalAddress);
+  }
+
+  /**
+  * @dev Allow owner add/remove swapper
+  *
+  * @param _swapper      address of swapper
+  * @param _status       true - add, false - remove
+  */
+  function updateSwapperStatus(address _swapper, bool _status) external onlyOwner {
+    swappers[_swapper] = _status;
+  }
+
+  /**
+  * @dev Allow owner update fund name
+  *
+  * @param _name      new fund name
+  */
+  function updateFundName(string memory _name) external onlyOwner {
+    name = _name;
   }
 
   /**
@@ -805,7 +843,7 @@ abstract contract SmartFundCore is Ownable, IERC20 {
   */
   function emergencyWithdraw(address _token) external onlyOwner {
     require(totalShares == 0);
-    if (_token == address(ETH_TOKEN_ADDRESS)) {
+    if (_token == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
       msg.sender.transfer(address(this).balance);
     } else {
       IERC20(_token).transfer(msg.sender, IERC20(_token).balanceOf(address(this)));

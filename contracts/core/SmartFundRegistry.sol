@@ -2,8 +2,6 @@ pragma solidity ^0.6.12;
 
 import "./interfaces/SmartFundETHFactoryInterface.sol";
 import "./interfaces/SmartFundERC20FactoryInterface.sol";
-import "./interfaces/SmartFundETHLightFactoryInterface.sol";
-import "./interfaces/SmartFundERC20LightFactoryInterface.sol";
 
 import "./interfaces/PermittedAddressesInterface.sol";
 
@@ -28,21 +26,11 @@ contract SmartFundRegistry is Ownable {
   // Default maximum success fee is 3000/30%
   uint256 public maximumSuccessFee = 3000;
 
-  // Address of stable coin can be set in constructor and changed via function
-  address public stableCoinAddress;
-
-  // Address of CoTrader coin be set in constructor
-  address public COTCoinAddress;
-
   // Factories
   SmartFundETHFactoryInterface public smartFundETHFactory;
   SmartFundERC20FactoryInterface public smartFundERC20Factory;
-  SmartFundETHLightFactoryInterface public smartFundETHLightFactory;
-  SmartFundERC20LightFactoryInterface public smartFundERC20LightFactory;
 
-  // Enum for detect fund type in create fund function
-  // NOTE: You can add a new type at the end, but do not change this order
-  enum FundType { ETH, USD, COT }
+  address public platformFeeAddress = address(this);
 
   event SmartFundAdded(address indexed smartFundAddress, address indexed owner);
 
@@ -51,35 +39,23 @@ contract SmartFundRegistry is Ownable {
   *
   * @param _exchangePortalAddress        Address of the initial ExchangePortal contract
   * @param _poolPortalAddress            Address of the initial PoolPortal contract
-  * @param _stableCoinAddress            Address of the stable coin
-  * @param _COTCoinAddress               Address of Cotrader coin
   * @param _smartFundETHFactory          Address of smartFund ETH factory
   * @param _smartFundERC20Factory        Address of smartFund USD factory
-  * @param _smartFundETHLightFactory     Address of smartFund ETH factory
-  * @param _smartFundERC20LightFactory   Address of smartFund USD factory
   * @param _defiPortalAddress            Address of defiPortal contract
   * @param _permittedAddresses           Address of permittedAddresses contract
   */
   constructor(
     address _exchangePortalAddress,
     address _poolPortalAddress,
-    address _stableCoinAddress,
-    address _COTCoinAddress,
     address _smartFundETHFactory,
     address _smartFundERC20Factory,
-    address _smartFundETHLightFactory,
-    address _smartFundERC20LightFactory,
     address _defiPortalAddress,
     address _permittedAddresses
   ) public {
     exchangePortalAddress = _exchangePortalAddress;
     poolPortalAddress = _poolPortalAddress;
-    stableCoinAddress = _stableCoinAddress;
-    COTCoinAddress = _COTCoinAddress;
     smartFundETHFactory = SmartFundETHFactoryInterface(_smartFundETHFactory);
     smartFundERC20Factory = SmartFundERC20FactoryInterface(_smartFundERC20Factory);
-    smartFundETHLightFactory = SmartFundETHLightFactoryInterface(_smartFundETHLightFactory);
-    smartFundERC20LightFactory = SmartFundERC20LightFactoryInterface(_smartFundERC20LightFactory);
     defiPortalAddress = _defiPortalAddress;
     permittedAddresses = PermittedAddressesInterface(_permittedAddresses);
   }
@@ -89,28 +65,29 @@ contract SmartFundRegistry is Ownable {
   *
   * @param _name                        The name of the new fund
   * @param _successFee                  The fund managers success fee
-  * @param _fundType                    Fund type enum number
+  * @param _coreAsset                   Fund core asset
   * @param _isRequireTradeVerification  If true fund can buy only tokens,
   *                                     which include in Merkle Three white list
   */
   function createSmartFund(
     string memory _name,
     uint256       _successFee,
-    uint256       _fundType,
+    address       _coreAsset,
     bool          _isRequireTradeVerification
   ) public {
     // Require that the funds success fee be less than the maximum allowed amount
-    require(_successFee <= maximumSuccessFee);
+    require(_successFee <= maximumSuccessFee, "Too big fee");
 
     address smartFund;
 
     // ETH case
-    if(_fundType == uint256(FundType.ETH)){
+    if(_coreAsset == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)){
       // Create ETH Fund
       smartFund = smartFundETHFactory.createSmartFund(
         msg.sender,
         _name,
         _successFee, // manager and platform fee
+        platformFeeAddress,
         exchangePortalAddress,
         poolPortalAddress,
         defiPortalAddress,
@@ -119,85 +96,25 @@ contract SmartFundRegistry is Ownable {
       );
 
     }
-    // ERC20 case
+    // USD case
     else{
-      address coinAddress = getERC20AddressByFundType(_fundType);
       // Create ERC20 based fund
       smartFund = smartFundERC20Factory.createSmartFund(
         msg.sender,
         _name,
         _successFee, // manager and platform fee
+        platformFeeAddress,
         exchangePortalAddress,
         poolPortalAddress,
         defiPortalAddress,
         address(permittedAddresses),
-        coinAddress,
+        _coreAsset,
         _isRequireTradeVerification
       );
     }
 
     smartFunds.push(smartFund);
     emit SmartFundAdded(smartFund, msg.sender);
-  }
-
-  /**
-  * @dev Creates a new Light SmartFund
-  *
-  * @param _name                        The name of the new fund
-  * @param _successFee                  The fund managers success fee
-  * @param _fundType                    Fund type enum number
-  * @param _isRequireTradeVerification  If true fund can buy only tokens,
-  *                                     which include in Merkle Three white list
-  */
-  function createSmartFundLight(
-    string memory _name,
-    uint256       _successFee,
-    uint256       _fundType,
-    bool          _isRequireTradeVerification
-  ) public {
-    // Require that the funds success fee be less than the maximum allowed amount
-    require(_successFee <= maximumSuccessFee);
-
-    address smartFund;
-
-    // ETH case
-    if(_fundType == uint256(FundType.ETH)){
-      // Create ETH Fund
-      smartFund = smartFundETHLightFactory.createSmartFundLight(
-        msg.sender,
-        _name,
-        _successFee, // manager and platform fee
-        exchangePortalAddress,
-        address(permittedAddresses),
-        _isRequireTradeVerification
-      );
-
-    }
-    // ERC20 case
-    else{
-      address coinAddress = getERC20AddressByFundType(_fundType);
-      // Create ERC20 based fund
-      smartFund = smartFundERC20LightFactory.createSmartFundLight(
-        msg.sender,
-        _name,
-        _successFee, // manager and platform fee
-        exchangePortalAddress,
-        address(permittedAddresses),
-        coinAddress,
-        _isRequireTradeVerification
-      );
-    }
-
-    smartFunds.push(smartFund);
-    emit SmartFundAdded(smartFund, msg.sender);
-  }
-
-
-  function getERC20AddressByFundType(uint256 _fundType) private view returns(address coinAddress){
-    // Define coin address dependse of fund type
-    coinAddress = _fundType == uint256(FundType.USD)
-    ? stableCoinAddress
-    : COTCoinAddress;
   }
 
   function totalSmartFunds() public view returns (uint256) {
@@ -259,16 +176,6 @@ contract SmartFundRegistry is Ownable {
     maximumSuccessFee = _maximumSuccessFee;
   }
 
-  /**
-  * @dev Owner can set new stableCoinAddress
-  *
-  * @param _stableCoinAddress    New stable address
-  */
-  function setStableCoinAddress(address _stableCoinAddress) external onlyOwner {
-    require(permittedAddresses.permittedAddresses(_stableCoinAddress));
-    stableCoinAddress = _stableCoinAddress;
-  }
-
 
   /**
   * @dev Owner can set new smartFundETHFactory
@@ -291,21 +198,12 @@ contract SmartFundRegistry is Ownable {
 
 
   /**
-  * @dev Owner can set new smartFundETHLightFactory
+  * @dev Owner can set new platform address for get platform commisiion
   *
-  * @param _smartFundETHLightFactory    address of ETH factory contract
+  * @param _newPlatformFeeAddress   new commisiion address
   */
-  function setNewSmartFundETHLightFactory(address _smartFundETHLightFactory) external onlyOwner {
-      smartFundETHLightFactory = SmartFundETHLightFactoryInterface(_smartFundETHLightFactory);
-  }
-
-  /**
-  * @dev Owner can set new smartFundERC20LightFactory
-  *
-  * @param _smartFundERC20LightFactory    address of ERC20 factory contract
-  */
-  function setNewSmartFundERC20LightFactory(address _smartFundERC20LightFactory) external onlyOwner {
-    smartFundERC20LightFactory = SmartFundERC20LightFactoryInterface(_smartFundERC20LightFactory);
+  function setNewPlatformFeeAddress(address _newPlatformFeeAddress) external onlyOwner {
+    platformFeeAddress = _newPlatformFeeAddress;
   }
 
   /**

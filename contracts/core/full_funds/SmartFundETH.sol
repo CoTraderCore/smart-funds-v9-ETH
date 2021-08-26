@@ -43,7 +43,7 @@ contract SmartFundETH is SmartFundCore {
     _poolPortalAddress,
     _defiPortal,
     _permittedAddresses,
-    address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee),
+    address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE),
     _isRequireTradeVerification
   )
   public{}
@@ -91,18 +91,21 @@ contract SmartFundETH is SmartFundCore {
   function calculateFundValue() public override view returns (uint256) {
     uint256 ethBalance = address(this).balance;
 
+    // cache global var for save gas
+    uint256 tokenAddressesLength = tokenAddresses.length;
+
     // If the fund only contains ether, return the funds ether balance
-    if (tokenAddresses.length == 1)
+    if (tokenAddressesLength == 1)
       return ethBalance;
 
     // Otherwise, we get the value of all the other tokens in ether via exchangePortal
 
     // Calculate value for ERC20
-    address[] memory fromAddresses = new address[](tokenAddresses.length - 1); // Sub ETH
-    uint256[] memory amounts = new uint256[](tokenAddresses.length - 1);
+    address[] memory fromAddresses = new address[](tokenAddressesLength - 1); // Sub ETH
+    uint256[] memory amounts = new uint256[](tokenAddressesLength - 1);
     uint index = 0;
 
-    for (uint256 i = 1; i < tokenAddresses.length; i++) {
+    for (uint256 i = 1; i < tokenAddressesLength; i++) {
       fromAddresses[index] = tokenAddresses[i];
       amounts[index] = IERC20(tokenAddresses[i]).balanceOf(address(this));
       index++;
@@ -111,7 +114,7 @@ contract SmartFundETH is SmartFundCore {
     uint256 tokensValue = exchangePortal.getTotalValue(
       fromAddresses,
       amounts,
-      address(ETH_TOKEN_ADDRESS)
+      address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)
     );
 
     // Sum ETH + ERC20
@@ -127,7 +130,7 @@ contract SmartFundETH is SmartFundCore {
   */
   function getTokenValue(IERC20 _token) public override view returns (uint256) {
     // return ETH
-    if (_token == ETH_TOKEN_ADDRESS){
+    if (_token == IERC20(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)){
       return address(this).balance;
     }
     // return ERC20 in ETH
@@ -135,7 +138,7 @@ contract SmartFundETH is SmartFundCore {
       uint256 tokenBalance = _token.balanceOf(address(this));
       return exchangePortal.getValue(
         address(_token),
-        address(ETH_TOKEN_ADDRESS),
+        address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE),
         tokenBalance
       );
     }
