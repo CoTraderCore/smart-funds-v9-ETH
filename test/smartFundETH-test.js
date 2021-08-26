@@ -37,7 +37,6 @@ const ONEINCH_MOCK_ADDITIONAL_PARAMS = web3.eth.abi.encodeParameters(
 
 // real contracts
 const SmartFundETH = artifacts.require('./core/full_funds/SmartFundETH.sol')
-const TokensTypeStorage = artifacts.require('./core/storage/TokensTypeStorage.sol')
 const PermittedAddresses = artifacts.require('./core/verification/PermittedAddresses.sol')
 const MerkleWhiteList = artifacts.require('./core/verification/MerkleTreeTokensVerification.sol')
 
@@ -61,7 +60,6 @@ let xxxERC,
     DAIUNI,
     DAIBNT,
     yyyERC,
-    tokensType,
     permittedAddresses,
     oneInch,
     merkleWhiteList,
@@ -151,25 +149,13 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
     // Deploy merkle white list contract
     merkleWhiteList = await MerkleWhiteList.new(MerkleTREE.getRoot())
 
-    // Deploy tokens type storage
-    tokensType = await TokensTypeStorage.new()
-
-    // Mark ETH as CRYPTOCURRENCY, because we recieve this token,
-    // without trade, but via deposit
-    await tokensType.setTokenTypeAsOwner(ETH_TOKEN_ADDRESS, "CRYPTOCURRENCY")
-
     // Deploy exchangePortal
     exchangePortal = await ExchangePortalMock.new(
       1,
       1,
       DAI.address,
-      tokensType.address,
       merkleWhiteList.address
     )
-
-
-    // allow exchange portal write to token type storage
-    await tokensType.addNewPermittedAddress(exchangePortal.address)
 
     permittedAddresses = await PermittedAddresses.new(
       exchangePortal.address,
@@ -957,9 +943,6 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
           from: userOne,
         }
       )
-
-      // After trade via aggregatos recieved asset should be marked as CRYPTOCURRENCY
-      assert.equal(await tokensType.getType(xxxERC.address), TOKEN_KEY_CRYPTOCURRENCY)
 
       // 1 token is now worth 2 ether, the fund managers cut is now 0.1 ether
       await exchangePortal.setRatio(1, 2)

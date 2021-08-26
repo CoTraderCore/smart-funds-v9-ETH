@@ -31,7 +31,6 @@ const PARASWAP_MOCK_ADDITIONAL_PARAMS = web3.eth.abi.encodeParameters(
 
 // real contracts
 const SmartFundETH = artifacts.require('./core/full_funds/SmartFundETH.sol')
-const TokensTypeStorage = artifacts.require('./core/storage/TokensTypeStorage.sol')
 const MerkleWhiteList = artifacts.require('./core/verification/MerkleTreeTokensVerification.sol')
 
 // mock contracts
@@ -51,7 +50,6 @@ let xxxERC,
     yyyERC,
     atackContract,
     atackContractAsManager,
-    tokensType,
     merkleWhiteList,
     MerkleTREE
 
@@ -103,20 +101,13 @@ contract('ReEntrancy Atack', function([userOne, userTwo, userThree]) {
     // Deploy merkle white list contract
     merkleWhiteList = await MerkleWhiteList.new(MerkleTREE.getRoot())
 
-    // Deploy tokens type storage
-    tokensType = await TokensTypeStorage.new()
-
     // Deploy exchangePortal
     exchangePortal = await ExchangePortalMock.new(
       1,
       1,
       DAI.address,
-      tokensType.address,
       merkleWhiteList.address
     )
-
-    // allow exchange portal write to token type storage
-    await tokensType.addNewPermittedAddress(exchangePortal.address)
 
     // Deploy ETH fund
     smartFundETH = await SmartFundETH.new(
@@ -175,8 +166,6 @@ contract('ReEntrancy Atack', function([userOne, userTwo, userThree]) {
 
       // check fund balance
       assert.equal(await web3.eth.getBalance(smartFundETH.address), toWei(String(1)))
-
-      assert.equal(await tokensType.isPermittedAddress(exchangePortal.address), true)
 
       // get proof and position for dest token
       const proofXXX = MerkleTREE.getProof(keccak256(xxxERC.address)).map(x => buf2hex(x.data))

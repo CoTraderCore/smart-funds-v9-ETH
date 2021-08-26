@@ -1,14 +1,12 @@
 pragma solidity ^0.6.12;
 
 import "../../../contracts/zeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import "../../../contracts/core/interfaces/ITokensTypeStorage.sol";
 import "../../../contracts/core/interfaces/IMerkleTreeTokensVerification.sol";
 import "../../../contracts/zeppelin-solidity/contracts/math/SafeMath.sol";
 
 contract ExchangePortalMock {
 
   using SafeMath for uint256;
-  ITokensTypeStorage public tokensTypes;
   // Contract for merkle tree white list verification
   IMerkleTreeTokensVerification public merkleTreeWhiteList;
 
@@ -32,7 +30,6 @@ contract ExchangePortalMock {
     uint256 _mul,
     uint256 _div,
     address _stableCoinAddress,
-    address _tokensTypes,
     address _merkleTreeWhiteList
     )
     public
@@ -40,7 +37,6 @@ contract ExchangePortalMock {
     mul = _mul;
     div = _div;
     stableCoinAddress = _stableCoinAddress;
-    tokensTypes = ITokensTypeStorage(_tokensTypes);
     merkleTreeWhiteList = IMerkleTreeTokensVerification(_merkleTreeWhiteList);
   }
 
@@ -119,8 +115,6 @@ contract ExchangePortalMock {
     }else{
       receivedAmount = 0;
     }
-
-    setTokenType(address(_destination), "CRYPTOCURRENCY");
   }
 
   function _tradeViaOneInchMock(
@@ -240,15 +234,6 @@ contract ExchangePortalMock {
 
   function changeStopTransferStatus(bool _status) public {
     stopTransfer = _status;
-  }
-
-
-  function setTokenType(address _token, string memory _type) private {
-    // no need add type, if token alredy registred
-    if(tokensTypes.isRegistred(_token))
-      return;
-
-    tokensTypes.addNewTokenType(_token,  _type);
   }
 
   function pay() public payable {}

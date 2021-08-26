@@ -9,7 +9,6 @@ import "../../zeppelin-solidity/contracts/math/SafeMath.sol";
 
 import "../interfaces/IPricePortal.sol";
 import "../interfaces/ExchangePortalInterface.sol";
-import "../interfaces/ITokensTypeStorage.sol";
 import "../interfaces/IMerkleTreeTokensVerification.sol";
 
 
@@ -17,9 +16,6 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
   using SafeMath for uint256;
 
   uint public version = 5;
-
-  // Contract for handle tokens types
-  ITokensTypeStorage public tokensTypes;
 
   // Contract for merkle tree white list verification
   IMerkleTreeTokensVerification public merkleTreeWhiteList;
@@ -59,20 +55,17 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
   *
   * @param _pricePortal            address of price portal
   * @param _OneInchRoute           address of oneInch ETH contract
-  * @param _tokensTypes            address of the ITokensTypeStorage
   * @param _merkleTreeWhiteList    address of the IMerkleTreeWhiteList
   */
   constructor(
     address _pricePortal,
     address _OneInchRoute,
-    address _tokensTypes,
     address _merkleTreeWhiteList
     )
     public
   {
     pricePortal = IPricePortal(_pricePortal);
     OneInchRoute = _OneInchRoute;
-    tokensTypes = ITokensTypeStorage(_tokensTypes);
     merkleTreeWhiteList = IMerkleTreeTokensVerification(_merkleTreeWhiteList);
   }
 
@@ -190,8 +183,6 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
      require(success, "Fail 1inch call");
      // get received amount
      destinationReceived = tokenBalance(IERC20(destinationToken));
-     // set token type
-     tokensTypes.addNewTokenType(destinationToken, "CRYPTOCURRENCY");
   }
 
   // Facilitates for send source remains

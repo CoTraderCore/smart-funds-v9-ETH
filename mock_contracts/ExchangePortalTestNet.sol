@@ -15,7 +15,6 @@ import "../contracts/oneInch/IOneSplitAudit.sol";
 import "../contracts/core/interfaces/ExchangePortalInterface.sol";
 import "../contracts/core/interfaces/DefiPortalInterface.sol";
 import "../contracts/core/interfaces/PoolPortalViewInterface.sol";
-import "../contracts/core/interfaces/ITokensTypeStorage.sol";
 import "../contracts/core/interfaces/IMerkleTreeTokensVerification.sol";
 
 
@@ -23,9 +22,6 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
   using SafeMath for uint256;
 
   uint public version = 4;
-
-  // Contract for handle tokens types
-  ITokensTypeStorage public tokensTypes;
 
   // Contract for merkle tree white list verification
   IMerkleTreeTokensVerification public merkleTreeWhiteList;
@@ -78,7 +74,6 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
   * @param _bancorData             address of GetBancorData helper
   * @param _poolPortal             address of pool portal
   * @param _oneInch                address of 1inch OneSplitAudit contract
-  * @param _tokensTypes            address of the ITokensTypeStorage
   * @param _merkleTreeWhiteList    address of the IMerkleTreeWhiteList
   */
   constructor(
@@ -86,7 +81,6 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
     address _bancorData,
     address _poolPortal,
     address _oneInch,
-    address _tokensTypes,
     address _merkleTreeWhiteList
     )
     public
@@ -95,7 +89,6 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
     bancorData = IGetBancorData(_bancorData);
     poolPortal = PoolPortalViewInterface(_poolPortal);
     oneInch = IOneSplitAudit(_oneInch);
-    tokensTypes = ITokensTypeStorage(_tokensTypes);
     merkleTreeWhiteList = IMerkleTreeTokensVerification(_merkleTreeWhiteList);
   }
 
@@ -264,8 +257,6 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
       _transferFromSenderAndApproveTo(IERC20(sourceToken), sourceAmount, address(bancorNetwork));
       returnAmount = bancorNetwork.claimAndConvert(pathInERC20, sourceAmount, 1);
     }
-
-    tokensTypes.addNewTokenType(destinationToken, "BANCOR_ASSET");
  }
 
   // for test correct decode
@@ -322,34 +313,8 @@ contract ExchangePortal is ExchangePortalInterface, Ownable {
     view
     returns (uint256)
   {
-    if(_amount > 0){
-      // get asset type
-      bytes32 assetType = tokensTypes.getType(_from);
-
-      // get value by asset type
-      if(assetType == bytes32("CRYPTOCURRENCY")){
-        return getValueViaDEXsAgregators(_from, _to, _amount);
-      }
-      else if (assetType == bytes32("BANCOR_ASSET")){
-        return getValueViaBancor(_from, _to, _amount);
-      }
-      else if (assetType == bytes32("UNISWAP_POOL")){
-        return getValueForUniswapPools(_from, _to, _amount);
-      }
-      else if (assetType == bytes32("UNISWAP_POOL_V2")){
-        return getValueForUniswapV2Pools(_from, _to, _amount);
-      }
-      else if (assetType == bytes32("BALANCER_POOL")){
-        return getValueForBalancerPool(_from, _to, _amount);
-      }
-      else{
-        // Unmarked type, try find value
-        return findValue(_from, _to, _amount);
-      }
-    }
-    else{
-      return 0;
-    }
+    if(_amount > 0)
+      return getValueViaDEXsAgregators(_from, _to, _amount);
   }
 
   /**
