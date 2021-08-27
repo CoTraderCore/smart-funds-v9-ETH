@@ -16,8 +16,8 @@ require('chai')
 const PermittedAddresses = artifacts.require('./core/verification/PermittedAddresses.sol')
 
 // Factories
-const SmartFundETHFactory = artifacts.require('./core/full_funds/SmartFundETHFactory.sol')
-const SmartFundERC20Factory = artifacts.require('./core/full_funds/SmartFundERC20Factory.sol')
+const SmartFundETHFactory = artifacts.require('./core/funds/SmartFundETHFactory.sol')
+const SmartFundERC20Factory = artifacts.require('./core/funds/SmartFundERC20Factory.sol')
 
 // Registry
 const SmartFundRegistry = artifacts.require('./core/SmartFundRegistry.sol')

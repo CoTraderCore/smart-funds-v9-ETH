@@ -30,7 +30,7 @@ const PARASWAP_MOCK_ADDITIONAL_PARAMS = web3.eth.abi.encodeParameters(
 
 
 // real contracts
-const SmartFundETH = artifacts.require('./core/full_funds/SmartFundETH.sol')
+const SmartFundETH = artifacts.require('./core/funds/SmartFundETH.sol')
 const MerkleWhiteList = artifacts.require('./core/verification/MerkleTreeTokensVerification.sol')
 
 // mock contracts
