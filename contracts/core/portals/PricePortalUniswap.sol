@@ -12,28 +12,22 @@ interface Factory {
 }
 
 
-contract PricePortalPancake is Ownable {
+contract PricePortalUniswap is Ownable {
   address public WETH;
-  address public pancakeRouter;
-  address public coswapRouter;
-  address public bCOT;
+  address public uniswapRouter;
   address public factory;
   address[] public connectors;
 
   constructor(
     address _WETH,
-    address _pancakeRouter,
-    address _coswapRouter,
-    address _bCOT,
+    address _uniswapRouter,
     address _factory,
     address[] memory _connectors
   )
     public
   {
     WETH = _WETH;
-    pancakeRouter = _pancakeRouter;
-    coswapRouter = _coswapRouter;
-    bCOT = _bCOT;
+    uniswapRouter = _uniswapRouter;
     factory = _factory;
     connectors = _connectors;
   }
@@ -68,22 +62,15 @@ contract PricePortalPancake is Ownable {
     ? wrapETH
     : _to;
 
-    // use coSwap for bCOT
-    if(_from == bCOT){
-     return getPriceForBCOT(toAddress, _amount);
-    }
-    // use Pancake only
-    else{
-      return getPriceFromPancake(
-        fromAddress,
-        toAddress,
-        _amount
-      );
-    }
+    return getPriceFromUniswap(
+      fromAddress,
+      toAddress,
+      _amount
+    );
   }
 
-  // helper for get ratio between pancake assets
-  function getPriceFromPancake(
+  // helper for get ratio between uniswap assets
+  function getPriceFromUniswap(
     address fromAddress,
     address toAddress,
     uint256 _amount
@@ -98,7 +85,7 @@ contract PricePortalPancake is Ownable {
       path[0] = fromAddress;
       path[1] = toAddress;
 
-      return routerRatio(path, _amount, pancakeRouter);
+      return routerRatio(path, _amount, uniswapRouter);
     }
     // else get connector
     else{
@@ -109,33 +96,7 @@ contract PricePortalPancake is Ownable {
       path[1] = connector;
       path[2] = toAddress;
 
-      return routerRatio(path, _amount, pancakeRouter);
-    }
-  }
-
-  function getPriceForBCOT(address toAddress, uint256 _amount)
-    internal
-    view
-    returns(uint256)
-  {
-    // get bCOT in WETH from coswap
-    address[] memory path = new address[](2);
-    path[0] = bCOT;
-    path[1] = WETH;
-
-    uint256 bCOTinWETH = routerRatio(path, _amount, coswapRouter);
-
-    // if toAddress == weth just return weth result
-    if(toAddress == WETH){
-      return bCOTinWETH;
-    }
-    // else convert weth result to toAddress via Pancake
-    else{
-      return getPriceFromPancake(
-        WETH,
-        toAddress,
-        bCOTinWETH
-      );
+      return routerRatio(path, _amount, uniswapRouter);
     }
   }
 

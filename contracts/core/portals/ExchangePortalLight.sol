@@ -30,8 +30,7 @@ contract ExchangePortalLight is ExchangePortalInterface, Ownable {
   address public OneInchRoute;
 
   address public WETH;
-  address public coswapRouter;
-  address public pancakeRouter;
+  address public uniswapRouter;
 
   IPricePortal public pricePortal;
 
@@ -39,7 +38,7 @@ contract ExchangePortalLight is ExchangePortalInterface, Ownable {
   // Enum
   // NOTE: You can add a new type at the end, but DO NOT CHANGE this order,
   // because order has dependency in other contracts like ConvertPortal
-  enum ExchangeType { OneInchRoute, CoSwap, Pancake }
+  enum ExchangeType { Paraswap, Bancor, OneInch, OneInchETH, UniswapV2 }
 
   // Trade event
   event Trade(
@@ -72,8 +71,7 @@ contract ExchangePortalLight is ExchangePortalInterface, Ownable {
     address _OneInchRoute,
     address _merkleTreeWhiteList,
     address _WETH,
-    address _coswapRouter,
-    address _pancakeRouter
+    address _uniswapRouter
     )
     public
   {
@@ -81,8 +79,7 @@ contract ExchangePortalLight is ExchangePortalInterface, Ownable {
     OneInchRoute = _OneInchRoute;
     merkleTreeWhiteList = IMerkleTreeTokensVerification(_merkleTreeWhiteList);
     WETH = _WETH;
-    coswapRouter = _coswapRouter;
-    pancakeRouter = _pancakeRouter;
+    uniswapRouter = _uniswapRouter;
   }
 
 
@@ -132,7 +129,7 @@ contract ExchangePortalLight is ExchangePortalInterface, Ownable {
     }
 
     // trade via 1inch
-    if (_type == uint(ExchangeType.OneInchRoute)){
+    if (_type == uint(ExchangeType.OneInchETH)){
       receivedAmount = _tradeViaOneInchRoute(
           address(_source),
           address(_destination),
@@ -141,23 +138,13 @@ contract ExchangePortalLight is ExchangePortalInterface, Ownable {
       );
     }
 
-    // trade via CoSwap
-    else if(_type == uint(ExchangeType.CoSwap)){
+    // trade via Uniswap
+    else if(_type == uint(ExchangeType.UniswapV2)){
       receivedAmount = _tradeViaUniswapV2BasedDEX(
         address(_source),
         address(_destination),
         _sourceAmount,
-        coswapRouter
-      );
-    }
-
-    // trade via Pancake
-    else if(_type == uint(ExchangeType.Pancake)){
-      receivedAmount = _tradeViaUniswapV2BasedDEX(
-        address(_source),
-        address(_destination),
-        _sourceAmount,
-        pancakeRouter
+        uniswapRouter
       );
     }
 
