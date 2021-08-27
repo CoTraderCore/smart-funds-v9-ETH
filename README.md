@@ -25,7 +25,6 @@ NOTE: in separate console
 # Mainent deploy note
 
 ```
-Don't forget set new pool and exchange storage
 Don't forget add new addresses to new permittedAddresses contract
 Don't forget set latest 1inch contract
 ```
