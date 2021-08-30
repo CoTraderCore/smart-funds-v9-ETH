@@ -163,6 +163,10 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
   })
 
   describe('BUY and SELL ', function() {
+    it('should indicate skipp when price not trigger', async function() {
+       assert.equal(await strategy.computeTradeAction(), 0)
+    })
+
     it('should indicate buy when price go DOWN', async function() {
       // DUMP PRICE
       await token.approve(uniswapV2Router.address, toWei(String(50)))
