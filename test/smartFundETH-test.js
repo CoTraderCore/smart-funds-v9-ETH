@@ -41,7 +41,6 @@ const PermittedAddresses = artifacts.require('./core/verification/PermittedAddre
 const MerkleWhiteList = artifacts.require('./core/verification/MerkleTreeTokensVerification.sol')
 
 // mock
-const YVault = artifacts.require('./tokens/YVaultMock.sol')
 const Token = artifacts.require('./tokens/Token')
 const ExchangePortalMock = artifacts.require('./portalsMock/ExchangePortalMock')
 const CoTraderDAOWalletMock = artifacts.require('./CoTraderDAOWalletMock')
@@ -64,7 +63,6 @@ let xxxERC,
     oneInch,
     merkleWhiteList,
     MerkleTREE,
-    yDAI,
     ETHBNT,
     COT_DAO_WALLET
 
@@ -118,14 +116,6 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
       "DAI",
       18,
       toWei(String(100000000))
-    )
-
-    // Yearn token
-    yDAI = await YVault.new(
-      "Y Vault Yeran Token",
-      "yVault",
-      18,
-      DAI.address
     )
 
     ETHBNT = await Token.new(
