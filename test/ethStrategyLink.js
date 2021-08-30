@@ -6,8 +6,6 @@ import EVMRevert from './helpers/EVMRevert'
 import { duration } from './helpers/duration'
 import latestTime from './helpers/latestTime'
 import advanceTimeAndBlock from './helpers/advanceTimeAndBlock'
-import { PairHash } from '../config'
-
 
 const BigNumber = BN
 const buf2hex = x => '0x'+x.toString('hex')
@@ -23,9 +21,9 @@ const ETH_TOKEN_ADDRESS = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'
 const SmartFundETH = artifacts.require('./core/funds/SmartFundETH.sol')
 const PermittedAddresses = artifacts.require('./core/verification/PermittedAddresses.sol')
 const MerkleWhiteList = artifacts.require('./core/verification/MerkleTreeTokensVerification.sol')
-const STRATEGY = artifacts.require('./strategy/UNIBuyLowSellHigh')
-const ExchangePortal = artifacts.require('./core/portals/ExchangePortalLight')
-const PricePortalUniswap = artifacts.require('./core/portals/PricePortalUniswap')
+const STRATEGY = artifacts.require('./core/strategy/UNIBuyLowSellHigh.sol')
+const ExchangePortal = artifacts.require('./core/portals/ExchangePortalLight.sol')
+const PricePortalUniswap = artifacts.require('./core/portals/PricePortalUniswap.sol')
 
 const UniswapV2Factory = artifacts.require('./dex/UniswapV2Factory.sol')
 const UniswapV2Router = artifacts.require('./dex/UniswapV2Router02.sol')
@@ -54,6 +52,8 @@ let xxxERC,
     COT_DAO_WALLET,
     uniswapV2Factory,
     uniswapV2Router,
+    pairAddress,
+    pair,
     weth,
     token
 
@@ -63,7 +63,12 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
 
   async function deployContracts(successFee=1000){
     oneInch = await OneInch.new()
-    token = await Token.new("1000000000000000000000000")
+    token = await Token.new(
+      "TOKEN",
+      "TOKEN",
+      18,
+      "1000000000000000000000000"
+    )
 
     // Deploy DAI Token
     DAI = await Token.new(
@@ -79,7 +84,6 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
     uniswapV2Factory = await UniswapV2Factory.new(userOne)
     weth = await WETH.new()
     uniswapV2Router = await UniswapV2Router.new(uniswapV2Factory.address, weth.address)
-
 
     // add token liquidity
     await token.approve(uniswapV2Router.address, await token.totalSupply())
@@ -120,7 +124,7 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
     exchangePortal = await ExchangePortal.new(
       pricePortal.address,
       oneInch.address,
-      MerkleTREE.address,
+      merkleWhiteList.address,
       weth.address,
       uniswapV2Router.address
     )
@@ -145,15 +149,6 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
 
   beforeEach(async function() {
     await deployContracts()
-  })
-
-  describe('INIT', function() {
-    it('PairHash correct', async function() {
-      assert.equal(
-        String(await uniswapV2Factory.pairCodeHash()).toLowerCase(),
-        String(PairHash).toLowerCase(),
-      )
-    })
   })
 
   describe('test ', function() {

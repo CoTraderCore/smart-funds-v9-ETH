@@ -5,7 +5,7 @@ pragma solidity ^0.6.12;
 
 import "./chainlink/AggregatorV3Interface.sol";
 import "./chainlink/KeeperCompatibleInterface.sol";
-import "../../zeppelin-solidity/contracts/math/SafeMath.sol";
+import "../zeppelin-solidity/contracts/math/SafeMath.sol";
 
 interface IRouter {
   function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
@@ -85,8 +85,8 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface {
     function checkUpkeep(bytes calldata) external override returns (bool upkeepNeeded, bytes memory) {
         upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
 
-        if(computeTradeAction() !== 0)
-          upkeepNeeded = true
+        if(computeTradeAction() != 0)
+          upkeepNeeded = true;
     }
 
     // Check if need perform unkeep
@@ -94,15 +94,15 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface {
         lastTimeStamp = block.timestamp;
 
         // perform action
-        uint256 actionType = computeTradeAction()
-        if(actionType === TradeType.Buy){
-          tradeFromETH()
+        uint256 actionType = computeTradeAction();
+        if(actionType == uint256(TradeType.Buy)){
+          tradeFromETH(ethAmountToSell());
         }
-        else if(actionType === TradeType.Sell){
-          tradeFromUNI()
+        else if(actionType == uint256(TradeType.Sell)){
+          tradeFromUNI(uniAmountToSell());
         }
         else{
-          return // no need action
+          return; // no need action
         }
 
         // update data
@@ -112,32 +112,36 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface {
     // compute if need trade
     // 0 - Skip, 1 - Buy, 2 - Sell
     function computeTradeAction() public view returns(uint){
-       currentPrice = getUNIPriceInETH();
+       uint256 currentPrice = getUNIPriceInETH();
 
        if(currentPrice > previousPrice){
           uint256 currentDifference = currentPrice.sub(previousPrice);
           uint256 triggerPercent = previousPrice.div(100).mul(triggerPercentToBuy);
 
-          triggerPercent > currentDifference
-          ? return 1 // BUY
-          : return 0
+          uint256 res = triggerPercent > currentDifference
+          ? 1 // BUY
+          : 0;
+
+          return res;
        }
        else if(currentPrice < previousPrice){
           uint256 currentDifference = previousPrice.sub(currentPrice);
           uint256 triggerPercent = previousPrice.div(100).mul(triggerPercentToSell);
 
-          triggerPercent > currentDifference
-          ? return 2 // SELL
-          : return 0
+          uint256 res = triggerPercent > currentDifference
+          ? 2 // SELL
+          : 0;
+
+          return res;
        }
        else{
-         return 0 // SKIP
+         return 0; // SKIP
        }
     }
 
     // Calculate how much % of ETH send from fund balance for buy UNI
     function ethAmountToSell() internal view returns(uint256){
-      uint256 totatlETH = address(fund).balance()
+      uint256 totatlETH = address(fund).balance;
       return totatlETH.div(100).mul(splitPercentToBuy);
     }
 
@@ -161,7 +165,7 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface {
         positions,
         "0x",
         1
-      )
+      );
     }
 
     // Helper for trade from UNI
@@ -178,6 +182,6 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface {
         positions,
         "0x",
         1
-      )
+      );
     }
 }
