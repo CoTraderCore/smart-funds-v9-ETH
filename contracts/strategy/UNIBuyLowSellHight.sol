@@ -99,17 +99,21 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface {
 
         // perform action
         uint256 actionType = computeTradeAction();
+
+        // BUY action
         if(actionType == uint256(TradeType.Buy)){
           tradeFromUNDERLYING(underlyingAmountToSell());
         }
+        // SELL action
         else if(actionType == uint256(TradeType.Sell)){
           tradeFromUNI(uniAmountToSell());
         }
+        // NO need action
         else{
-          return; // no need action
+          return;
         }
 
-        // update data
+        // update data after buy or sell action 
         previousPrice = getUNIPriceInUNDERLYING();
     }
 

@@ -144,7 +144,7 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
       COT_DAO_WALLET.address,                               // address _platformAddress,
       exchangePortal.address,                       // address _exchangePortalAddress,
       permittedAddresses.address,
-      true                                          // verification for trade tokens
+      false                                          // verification for trade tokens
     )
 
     // Deploy strattegy
@@ -156,13 +156,19 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
       smartFundETH.address,
       token.address
     )
+
+    // Deposit in fund
+    await smartFundETH.deposit({ from:userOne, value:toWei(String(100))})
+
+    // Set strategy as swapper
+    await smartFundETH.updateSwapperStatus(strategy.address, true)
   }
 
   beforeEach(async function() {
     await deployContracts()
   })
 
-  describe('BUY and SELL ', function() {
+  describe('BUY and SELL indicators ', function() {
     it('should indicate skipp when price not trigger', async function() {
        assert.equal(await strategy.computeTradeAction(), 0)
     })
@@ -180,6 +186,13 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
        )
 
        assert.equal(await strategy.computeTradeAction(), 1)
+
+       // should be 0 UNI
+       assert.equal(await token.balanceOf(smartFundETH.address), 0)
+       // perform Unkeep
+       strategy.performUpkeep("0x")
+       // should buy UNI
+       assert.isTrue(await token.balanceOf(smartFundETH.address) > 0)
     })
 
     it('should indicate sell when price go UP', async function() {
