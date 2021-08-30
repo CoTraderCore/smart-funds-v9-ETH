@@ -55,7 +55,8 @@ let xxxERC,
     pairAddress,
     pair,
     weth,
-    token
+    token,
+    strategy
 
 
 
@@ -86,11 +87,11 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
     uniswapV2Router = await UniswapV2Router.new(uniswapV2Factory.address, weth.address)
 
     // add token liquidity
-    await token.approve(uniswapV2Router.address, await token.totalSupply())
+    await token.approve(uniswapV2Router.address, toWei(String(100)))
 
     await uniswapV2Router.addLiquidityETH(
       token.address,
-      await token.totalSupply(),
+      toWei(String(100)),
       1,
       1,
       userOne,
@@ -145,15 +146,49 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
       permittedAddresses.address,
       true                                          // verification for trade tokens
     )
+
+    // Deploy strattegy
+    strategy = await STRATEGY.new(
+      120, // 2 minutes interval
+      uniswapV2Router.address,
+      pairAddress,
+      [weth.address, token.address],
+      smartFundETH.address,
+      token.address
+    )
   }
 
   beforeEach(async function() {
     await deployContracts()
   })
 
-  describe('test ', function() {
-    it('should be able to ', async function() {
+  describe('BUY and SELL ', function() {
+    it('should indicate buy when price go DOWN', async function() {
+      // DUMP PRICE
+      await token.approve(uniswapV2Router.address, toWei(String(50)))
+      await uniswapV2Router.swapExactTokensForTokens(
+         toWei(String(50)),
+         1,
+         [token.address, weth.address],
+         userOne,
+         "1111111111111111111"
+         , { from: userOne }
+       )
 
+       assert.equal(await strategy.computeTradeAction(), 1)
+    })
+
+    it('should indicate sell when price go UP', async function() {
+       // PUMP PRICE
+       await uniswapV2Router.swapExactETHForTokens(
+         1,
+         [weth.address, token.address],
+         userOne,
+         "1111111111111111111"
+         , { from: userOne, value: toWei(String(50))}
+       )
+
+       assert.equal(await strategy.computeTradeAction(), 2)
     })
   })
   //END

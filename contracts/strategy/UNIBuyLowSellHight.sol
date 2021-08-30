@@ -31,12 +31,12 @@ interface IERC20 {
 contract UNIBuyLowSellHigh is KeeperCompatibleInterface {
     using SafeMath for uint256;
 
-    uint public previousPrice;
+    uint256 public previousPrice;
     address public poolAddress;
-    uint256 public splitPercentToSell;
-    uint256 public splitPercentToBuy;
-    uint256 public triggerPercentToSell;
-    uint256 public triggerPercentToBuy;
+    uint256 public splitPercentToSell = 10;
+    uint256 public splitPercentToBuy = 10;
+    uint256 public triggerPercentToSell = 10;
+    uint256 public triggerPercentToBuy = 10;
 
     IRouter public router;
     address[] public path;
@@ -114,21 +114,24 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface {
     function computeTradeAction() public view returns(uint){
        uint256 currentPrice = getUNIPriceInETH();
 
+       // Buy if current price >= trigger % to buy
        if(currentPrice > previousPrice){
           uint256 currentDifference = currentPrice.sub(previousPrice);
           uint256 triggerPercent = previousPrice.div(100).mul(triggerPercentToBuy);
 
-          uint256 res = triggerPercent > currentDifference
+          uint256 res = currentDifference >= triggerPercent
           ? 1 // BUY
           : 0;
 
           return res;
        }
+
+       // Sell if current price =< trigger % to sell
        else if(currentPrice < previousPrice){
           uint256 currentDifference = previousPrice.sub(currentPrice);
           uint256 triggerPercent = previousPrice.div(100).mul(triggerPercentToSell);
 
-          uint256 res = triggerPercent > currentDifference
+          uint256 res = currentDifference >= triggerPercent
           ? 2 // SELL
           : 0;
 
