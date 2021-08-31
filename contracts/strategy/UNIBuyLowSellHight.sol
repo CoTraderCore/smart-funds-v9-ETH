@@ -47,7 +47,7 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
     address public UNI_TOKEN;
     address public UNDERLYING_ADDRESS;
 
-    enum TradeType { Skip, Buy, Sell }
+    enum TradeType { Skip, BuyUNI, SellUNI }
 
 
     constructor(
@@ -95,7 +95,7 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
         uint256 actionType = computeTradeAction();
 
         // BUY action
-        if(actionType == uint256(TradeType.Buy)){
+        if(actionType == uint256(TradeType.BuyUNI)){
           // Trade from underlying to uni
           trade(
             UNDERLYING_ADDRESS,
@@ -104,7 +104,7 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
            );
         }
         // SELL action
-        else if(actionType == uint256(TradeType.Sell)){
+        else if(actionType == uint256(TradeType.SellUNI)){
           // Trade from uni to underlying
           trade(
             UNI_TOKEN,
@@ -127,26 +127,28 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
        uint256 currentUnderlyingPrice = getUNIPriceInUNDERLYING();
 
        // Buy if current price >= trigger % to buy
+       // This means UNI go UP
        if(currentUnderlyingPrice > previousUnderlyingPrice){
           uint256 res = computeTrigger(
             currentUnderlyingPrice,
             previousUnderlyingPrice,
             triggerPercentToBuy
           )
-          ? 1 // BUY
+          ? 2 // SELL UNI
           : 0;
 
           return res;
        }
 
        // Sell if current price =< trigger % to sell
+       // This means UNI go DOWN
        else if(currentUnderlyingPrice < previousUnderlyingPrice){
          uint256 res = computeTrigger(
            previousUnderlyingPrice,
            currentUnderlyingPrice,
            triggerPercentToSell
          )
-         ? 2 // SELL
+         ? 1 // BUY UNI
          : 0;
 
          return res;

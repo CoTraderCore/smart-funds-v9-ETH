@@ -172,7 +172,7 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
        assert.equal(await strategy.computeTradeAction(), 0)
     })
 
-    it('should indicate buy when price go DOWN', async function() {
+    it('should indicate buy when ETH price go DOWN to UNI ', async function() {
       // DUMP PRICE
       await token.approve(uniswapV2Router.address, toWei(String(50)))
       await uniswapV2Router.swapExactTokensForTokens(
@@ -184,17 +184,10 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
          , { from: userOne }
        )
 
-       assert.equal(await strategy.computeTradeAction(), 1)
-
-       // should be 0 UNI
-       assert.equal(await token.balanceOf(smartFundETH.address), 0)
-       // perform Unkeep
-       strategy.performUpkeep("0x")
-       // should buy UNI
-       assert.isTrue(await token.balanceOf(smartFundETH.address) > 0)
+       assert.equal(await strategy.computeTradeAction(), 2) // Should sell UNI
     })
 
-    it('should indicate sell when price go UP', async function() {
+    it('should indicate sell when ETH price go UP to UNI', async function() {
        // PUMP PRICE
        await uniswapV2Router.swapExactETHForTokens(
          1,
@@ -204,7 +197,7 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
          , { from: userOne, value: toWei(String(50))}
        )
 
-       assert.equal(await strategy.computeTradeAction(), 2)
+       assert.equal(await strategy.computeTradeAction(), 1) // Should buy UNI
     })
   })
   //END
