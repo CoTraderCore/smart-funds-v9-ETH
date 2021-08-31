@@ -47,14 +47,10 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
     address public UNI_TOKEN;
     address public UNDERLYING_ADDRESS;
 
-    uint public immutable interval;
-    uint public lastTimeStamp;
-
     enum TradeType { Skip, Buy, Sell }
 
 
     constructor(
-        uint updateInterval, // seconds
         address _router, // Uniswap v2 router
         address _poolAddress, // Uniswap v2 pool (pair)
         address[] memory _path, // path [UNI, UNDERLYING]
@@ -63,9 +59,6 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
       )
       public
     {
-      interval = updateInterval;
-      lastTimeStamp = block.timestamp;
-
       router = IRouter(_router);
       poolAddress = _poolAddress;
       path = _path;
@@ -88,16 +81,12 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
 
     // Check if need unkeep
     function checkUpkeep(bytes calldata) external override returns (bool upkeepNeeded, bytes memory) {
-        upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
-
         if(computeTradeAction() != 0)
           upkeepNeeded = true;
     }
 
     // Check if need perform unkeep
     function performUpkeep(bytes calldata) external override {
-        lastTimeStamp = block.timestamp;
-
         // perform action
         uint256 actionType = computeTradeAction();
 

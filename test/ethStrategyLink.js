@@ -149,7 +149,6 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
 
     // Deploy strattegy
     strategy = await STRATEGY.new(
-      120, // 2 minutes interval
       uniswapV2Router.address,
       pairAddress,
       [weth.address, token.address],
