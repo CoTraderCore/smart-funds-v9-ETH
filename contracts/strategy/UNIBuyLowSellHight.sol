@@ -5,6 +5,7 @@ pragma solidity ^0.6.12;
 import "./chainlink/AggregatorV3Interface.sol";
 import "./chainlink/KeeperCompatibleInterface.sol";
 import "../zeppelin-solidity/contracts/math/SafeMath.sol";
+import "../zeppelin-solidity/contracts/access/Ownable.sol";
 
 interface IRouter {
   function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
@@ -30,7 +31,7 @@ interface IERC20 {
   function balanceOf() external view returns(uint256);
 }
 
-contract UNIBuyLowSellHigh is KeeperCompatibleInterface {
+contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
     using SafeMath for uint256;
 
     uint256 public previousPrice;
@@ -113,7 +114,7 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface {
           return;
         }
 
-        // update data after buy or sell action 
+        // update data after buy or sell action
         previousPrice = getUNIPriceInUNDERLYING();
     }
 
@@ -199,5 +200,26 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface {
         "0x",
         1
       );
+    }
+
+    // Only owner setters
+    function setSplitPercentToSell(uint256 _splitPercentToSell) external onlyOwner{
+      require(splitPercentToSell <= 100, "Wrong %");
+      splitPercentToSell = _splitPercentToSell;
+    }
+
+    function setSplitPercentToBuy(uint256 _splitPercentToBuy) external onlyOwner{
+      require(splitPercentToBuy <= 100, "Wrong %");
+      splitPercentToBuy = _splitPercentToBuy;
+    }
+
+    function setTriggerPercentToSell(uint256 _triggerPercentToSell) external onlyOwner{
+      require(triggerPercentToSell <= 100, "Wrong %");
+      triggerPercentToSell = _triggerPercentToSell;
+    }
+
+    function setTriggerPercentToBuy(uint256 _triggerPercentToBuy) external onlyOwner{
+      require(triggerPercentToBuy <= 100, "Wrong %");
+      triggerPercentToBuy = _triggerPercentToBuy;
     }
 }
