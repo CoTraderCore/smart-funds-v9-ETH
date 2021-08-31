@@ -34,7 +34,7 @@ interface IERC20 {
 contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
     using SafeMath for uint256;
 
-    uint256 public previousPrice;
+    uint256 public previousUnderlyingPrice;
     address public poolAddress;
     uint256 public splitPercentToSell = 10;
     uint256 public splitPercentToBuy = 10;
@@ -66,7 +66,7 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
       UNI_TOKEN = _UNI_TOKEN;
       UNDERLYING_ADDRESS = fund.coreFundAsset();
 
-      previousPrice = getUNIPriceInUNDERLYING();
+      previousUnderlyingPrice = getUNIPriceInUNDERLYING();
     }
 
     // Helper for check price for 1 UNI in UNDERLYING
@@ -80,7 +80,11 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
     }
 
     // Check if need unkeep
-    function checkUpkeep(bytes calldata) external override returns (bool upkeepNeeded, bytes memory) {
+    function checkUpkeep(bytes calldata)
+      external
+      override
+      returns (bool upkeepNeeded, bytes memory)
+    {
         if(computeTradeAction() != 0)
           upkeepNeeded = true;
     }
@@ -92,11 +96,21 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
 
         // BUY action
         if(actionType == uint256(TradeType.Buy)){
-          tradeFromUNDERLYING(underlyingAmountToSell());
+          // Trade from underlying to uni
+          trade(
+            UNDERLYING_ADDRESS,
+            UNI_TOKEN,
+            underlyingAmountToSell()
+           );
         }
         // SELL action
         else if(actionType == uint256(TradeType.Sell)){
-          tradeFromUNI(uniAmountToSell());
+          // Trade from uni to underlying
+          trade(
+            UNI_TOKEN,
+            UNDERLYING_ADDRESS,
+            uniAmountToSell()
+           );
         }
         // NO need action
         else{
@@ -104,17 +118,21 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
         }
 
         // update data after buy or sell action
-        previousPrice = getUNIPriceInUNDERLYING();
+        previousUnderlyingPrice = getUNIPriceInUNDERLYING();
     }
 
     // compute if need trade
     // 0 - Skip, 1 - Buy, 2 - Sell
     function computeTradeAction() public view returns(uint){
-       uint256 currentPrice = getUNIPriceInUNDERLYING();
+       uint256 currentUnderlyingPrice = getUNIPriceInUNDERLYING();
 
        // Buy if current price >= trigger % to buy
-       if(currentPrice > previousPrice){
-          uint256 res = computeTrigger(currentPrice, previousPrice, triggerPercentToBuy)
+       if(currentUnderlyingPrice > previousUnderlyingPrice){
+          uint256 res = computeTrigger(
+            currentUnderlyingPrice,
+            previousUnderlyingPrice,
+            triggerPercentToBuy
+          )
           ? 1 // BUY
           : 0;
 
@@ -122,8 +140,12 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
        }
 
        // Sell if current price =< trigger % to sell
-       else if(currentPrice < previousPrice){
-         uint256 res = computeTrigger(previousPrice, currentPrice, triggerPercentToSell)
+       else if(currentUnderlyingPrice < previousUnderlyingPrice){
+         uint256 res = computeTrigger(
+           previousUnderlyingPrice,
+           currentUnderlyingPrice,
+           triggerPercentToSell
+         )
          ? 2 // SELL
          : 0;
 
@@ -135,13 +157,17 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
     }
 
     // return true if difference >= trigger percent
-    function computeTrigger(uint256 priceA, uint256 priceB, uint256 triggerPercent)
+    function computeTrigger(
+      uint256 priceA,
+      uint256 priceB,
+      uint256 triggerPercent
+    )
       public
       view
       returns(bool)
     {
       uint256 currentDifference = priceA.sub(priceB);
-      uint256 triggerPercent = previousPrice.div(100).mul(triggerPercent);
+      uint256 triggerPercent = previousUnderlyingPrice.div(100).mul(triggerPercent);
       return currentDifference >= triggerPercent;
     }
 
@@ -157,32 +183,15 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
       return totalUNI.div(100).mul(splitPercentToSell);
     }
 
-    // Helper for trade from ETH
-    function tradeFromUNDERLYING(uint256 underlyingAmount) internal {
+    // Helper for trade
+    function trade(address _fromToken, address _toToken, uint256 _amount) internal {
       bytes32[] memory proof;
       uint256[] memory positions;
 
       fund.trade(
-        UNDERLYING_ADDRESS,
-        underlyingAmount,
-        UNI_TOKEN,
-        4,
-        proof,
-        positions,
-        "0x",
-        1
-      );
-    }
-
-    // Helper for trade from UNI
-    function tradeFromUNI(uint256 uniAmount) internal {
-      bytes32[] memory proof;
-      uint256[] memory positions;
-
-      fund.trade(
-        UNI_TOKEN,
-        uniAmount,
-        UNDERLYING_ADDRESS,
+        _fromToken,
+        _amount,
+        _toToken,
         4,
         proof,
         positions,
