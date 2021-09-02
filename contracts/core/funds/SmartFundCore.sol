@@ -82,6 +82,9 @@ abstract contract SmartFundCore is Ownable, IERC20 {
   // The earnings the fund manager has already cashed out
   uint256 public fundManagerCashedOut = 0;
 
+  // Protect from flash loan atack
+  uint256 public fundManagerWithdrawDelay;
+
   // for ETH and USD fund this asset different
   address public coreFundAsset;
 
@@ -328,6 +331,9 @@ abstract contract SmartFundCore is Ownable, IERC20 {
     // add token to trader list
     _addToken(address(_destination));
 
+    // set manager withdraw delay
+    fundManagerWithdrawDelay = now + 30 seconds;
+
     // emit event
     emit Trade(
       address(_source),
@@ -459,6 +465,8 @@ abstract contract SmartFundCore is Ownable, IERC20 {
   * @dev Allows the fund manager to withdraw their cut of the funds profit
   */
   function fundManagerWithdraw() public onlyOwner {
+    require(now >= fundManagerWithdrawDelay, "Need wait 30 seconds after trade");
+
     uint256 fundManagerCut;
     uint256 fundValue;
 

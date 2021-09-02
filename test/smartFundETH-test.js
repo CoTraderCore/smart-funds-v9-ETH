@@ -468,6 +468,8 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
 
         assert.equal(await smartFundETH.calculateFundValue(), toWei(String(0.1)))
 
+        await advanceTimeAndBlock(duration.seconds(31))
+
         const {
           fundManagerRemainingCut,
           fundValue,
@@ -478,6 +480,8 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
         assert.equal(fundValue, toWei(String(0.1)))
         assert.equal(fundManagerRemainingCut, toWei(String(0.1)))
         assert.equal(fundManagerTotalCut, toWei(String(0.1)))
+
+        await advanceTimeAndBlock(duration.seconds(31))
 
           // // FM now withdraws their profit
         await smartFundETH.fundManagerWithdraw({ from: userOne })
@@ -544,6 +548,8 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
         await smartFundETH.withdraw(0, { from: userOne })
 
         assert.equal(await smartFundETH.calculateFundValue(), toWei(String(0.1)))
+
+        await advanceTimeAndBlock(duration.seconds(31))
 
         // FM now withdraws their profit
         await smartFundETH.fundManagerWithdraw({ from: userOne })
@@ -835,6 +841,8 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
       await deployContracts(2000)
       await fundManagerTest(20)
 
+      await advanceTimeAndBlock(duration.seconds(31))
+
       await smartFundETH.fundManagerWithdraw({ from: userOne })
 
       const {
@@ -852,6 +860,8 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
       await deployContracts(2000)
       await fundManagerTest(20)
 
+      await advanceTimeAndBlock(duration.seconds(31))
+
       await smartFundETH.fundManagerWithdraw({ from: userOne })
       await smartFundETH.calculateFundManagerCut()
 
@@ -859,6 +869,9 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
       await exchangePortal.setRatio(1, 100000000)
 
       await smartFundETH.calculateFundManagerCut()
+
+      await advanceTimeAndBlock(duration.seconds(31))
+
       // take cut
       await smartFundETH.fundManagerWithdraw({ from: userOne })
       await smartFundETH.calculateFundManagerCut()
@@ -952,6 +965,8 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
           from: userOne,
         }
       )
+
+      await advanceTimeAndBlock(duration.seconds(31))
 
       await smartFundETH.fundManagerWithdraw()
 
@@ -1114,6 +1129,8 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
       assert.equal(fundManagerRemainingCut, toWei(String(0.1)))
       assert.equal(fundManagerTotalCut, toWei(String(0.1)))
 
+      await advanceTimeAndBlock(duration.seconds(31))
+
       // // FM now withdraws their profit
       await smartFundETH.fundManagerWithdraw({ from: userOne })
 
@@ -1190,6 +1207,8 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
       assert.equal(fundValue, toWei(String(0.1)))
       assert.equal(fundManagerRemainingCut, toWei(String(0.1)))
       assert.equal(fundManagerTotalCut, toWei(String(0.1)))
+
+      await advanceTimeAndBlock(duration.seconds(31))
 
       // // FM now withdraws their profit
       await smartFundETH.fundManagerWithdraw({ from: userOne })
