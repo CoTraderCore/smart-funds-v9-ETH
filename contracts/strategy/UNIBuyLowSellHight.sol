@@ -89,6 +89,26 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
           upkeepNeeded = true;
     }
 
+    // REMOVE THIS IN PRODUCTION
+    function tradeFromUNItest() external onlyOwner {
+      // Trade from uni to underlying
+      trade(
+        UNI_TOKEN,
+        UNDERLYING_ADDRESS,
+        uniAmountToSell()
+       );
+    }
+
+    // REMOVE THIS IN PRODUCTION
+    function tradeFromUNDERLYINGtest() external onlyOwner {
+      // Trade from underlying to uni
+      trade(
+        UNDERLYING_ADDRESS,
+        UNI_TOKEN,
+        underlyingAmountToSell()
+       );
+    }
+
     // Check if need perform unkeep
     function performUpkeep(bytes calldata) external override {
         // perform action
@@ -174,14 +194,14 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
     }
 
     // Calculate how much % of UNDERLYING send from fund balance for buy UNI
-    function underlyingAmountToSell() internal view returns(uint256){
+    function underlyingAmountToSell() public view returns(uint256){
       uint256 totatlETH = fund.getFundTokenHolding(UNDERLYING_ADDRESS);
       return totatlETH.div(100).mul(splitPercentToBuy);
     }
 
     // Calculate how much % of UNI send from fund balance for buy UNDERLYING
-    function uniAmountToSell() internal view returns(uint256){
-      uint256 totalUNI = IERC20(UNI_TOKEN).balanceOf();
+    function uniAmountToSell() public view returns(uint256){
+      uint256 totalUNI = fund.getFundTokenHolding(UNI_TOKEN);
       return totalUNI.div(100).mul(splitPercentToSell);
     }
 
