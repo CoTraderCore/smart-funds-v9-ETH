@@ -89,26 +89,6 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
           upkeepNeeded = true;
     }
 
-    // REMOVE THIS IN PRODUCTION
-    function tradeFromUNItest() external onlyOwner {
-      // Trade from uni to underlying
-      trade(
-        UNI_TOKEN,
-        UNDERLYING_ADDRESS,
-        uniAmountToSell()
-       );
-    }
-
-    // REMOVE THIS IN PRODUCTION
-    function tradeFromUNDERLYINGtest() external onlyOwner {
-      // Trade from underlying to uni
-      trade(
-        UNDERLYING_ADDRESS,
-        UNI_TOKEN,
-        underlyingAmountToSell()
-       );
-    }
-
     // Check if need perform unkeep
     function performUpkeep(bytes calldata) external override {
         // perform action
