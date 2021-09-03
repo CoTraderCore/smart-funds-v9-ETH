@@ -153,7 +153,8 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
       pairAddress,
       [weth.address, token.address],
       smartFundETH.address,
-      token.address
+      token.address,
+      weth.address
     )
 
     // Deposit in fund
@@ -175,6 +176,8 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
     it('should indicate buy when ETH price go DOWN to UNI ', async function() {
       // DUMP PRICE
       await token.approve(uniswapV2Router.address, toWei(String(50)))
+
+      console.log("rate before ",  Number(fromWei(await strategy.getUNIPriceInUNDERLYING())).toFixed(1))
       await uniswapV2Router.swapExactTokensForTokens(
          toWei(String(50)),
          1,
@@ -182,6 +185,13 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
          userOne,
          "1111111111111111111"
          , { from: userOne }
+       )
+
+       console.log(
+         "LD / RATE before", Number(await strategy.previousLDRatePrice()),
+         "LD / RATE", Number(await strategy.getLDRatePrice()),
+         "rate ", Number(fromWei(await strategy.getUNIPriceInUNDERLYING())).toFixed(1),
+         "LD amount", Number(fromWei(await strategy.getLDAmount())).toFixed(1)
        )
 
        assert.equal(await strategy.computeTradeAction(), 2) // Should sell UNI
@@ -197,6 +207,12 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
          , { from: userOne, value: toWei(String(50))}
        )
 
+       console.log(
+         "LD / RATE before", Number(await strategy.previousLDRatePrice()),
+         "LD / RATE", Number(await strategy.getLDRatePrice()),
+         "rate ", Number(fromWei(await strategy.getUNIPriceInUNDERLYING())).toFixed(1),
+         "LD amount", Number(fromWei(await strategy.getLDAmount())).toFixed(1)
+       )
        assert.equal(await strategy.computeTradeAction(), 1) // Should buy UNI
     })
   })

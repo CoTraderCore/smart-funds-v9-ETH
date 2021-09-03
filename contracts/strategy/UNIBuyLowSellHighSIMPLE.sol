@@ -28,13 +28,13 @@ interface IFund {
 }
 
 interface IERC20 {
-  function balanceOf(address) external view returns(uint256);
+  function balanceOf() external view returns(uint256);
 }
 
-contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
+contract UNIBuyLowSellHighSIMPLE is KeeperCompatibleInterface, Ownable {
     using SafeMath for uint256;
 
-    uint256 public previousLDRatePrice;
+    uint256 public previousUnderlyingPrice;
     address public poolAddress;
     uint256 public splitPercentToSell = 10;
     uint256 public splitPercentToBuy = 10;
@@ -46,7 +46,6 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
     IFund public fund;
     address public UNI_TOKEN;
     address public UNDERLYING_ADDRESS;
-    address public LD_TOKEN;
 
     enum TradeType { Skip, BuyUNI, SellUNI }
 
@@ -56,8 +55,7 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
         address _poolAddress, // Uniswap v2 pool (pair)
         address[] memory _path, // path [UNI, UNDERLYING]
         address _fund, // SmartFund address
-        address _UNI_TOKEN, // Uniswap token
-        address _LD_TOKEN  // WETH or any another backed pool token
+        address _UNI_TOKEN // Uniswap token
       )
       public
     {
@@ -67,20 +65,8 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
       fund = IFund(_fund);
       UNI_TOKEN = _UNI_TOKEN;
       UNDERLYING_ADDRESS = fund.coreFundAsset();
-      LD_TOKEN = _LD_TOKEN;
 
-      previousLDRatePrice = getLDRatePrice();
-    }
-
-    // Helper for check price for LD / 1 UNI in UNDERLYING
-    function getLDRatePrice()
-      public
-      view
-      returns (uint256)
-    {
-      uint256 oneUNIinUnderlying = getUNIPriceInUNDERLYING();
-      uint256 LD = getLDAmount();
-      return LD.div(oneUNIinUnderlying);
+      previousUnderlyingPrice = getUNIPriceInUNDERLYING();
     }
 
     // Helper for check price for 1 UNI in UNDERLYING
@@ -91,11 +77,6 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
     {
       uint256[] memory res = router.getAmountsOut(1000000000000000000, path);
       return res[1];
-    }
-
-    // Helper for get WETH or any other token connector amount in pool
-    function getLDAmount() public view returns(uint256){
-      return IERC20(LD_TOKEN).balanceOf(poolAddress);
     }
 
     // Check if need unkeep
@@ -137,23 +118,23 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
         }
 
         // update data after buy or sell action
-        previousLDRatePrice = getLDRatePrice();
+        previousUnderlyingPrice = getUNIPriceInUNDERLYING();
     }
 
     // compute if need trade
     // 0 - Skip, 1 - Buy, 2 - Sell
     function computeTradeAction() public view returns(uint){
-       uint256 currentLDRatePrice = getLDRatePrice();
+       uint256 currentUnderlyingPrice = getUNIPriceInUNDERLYING();
 
        // Buy if current price >= trigger % to buy
        // This means UNI go UP
-       if(currentLDRatePrice > previousLDRatePrice){
+       if(currentUnderlyingPrice > previousUnderlyingPrice){
           uint256 res = computeTrigger(
-            currentLDRatePrice,
-            previousLDRatePrice,
+            currentUnderlyingPrice,
+            previousUnderlyingPrice,
             triggerPercentToBuy
           )
-          ? 1 // BUY UNI
+          ? 2 // SELL UNI
           : 0;
 
           return res;
@@ -161,13 +142,13 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
 
        // Sell if current price =< trigger % to sell
        // This means UNI go DOWN
-       else if(currentLDRatePrice < previousLDRatePrice){
+       else if(currentUnderlyingPrice < previousUnderlyingPrice){
          uint256 res = computeTrigger(
-           previousLDRatePrice,
-           currentLDRatePrice,
+           previousUnderlyingPrice,
+           currentUnderlyingPrice,
            triggerPercentToSell
          )
-         ? 2 // SELL UNI
+         ? 1 // BUY UNI
          : 0;
 
          return res;
@@ -188,7 +169,7 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
       returns(bool)
     {
       uint256 currentDifference = priceA.sub(priceB);
-      uint256 triggerPercent = previousLDRatePrice.div(100).mul(triggerPercent);
+      uint256 triggerPercent = previousUnderlyingPrice.div(100).mul(triggerPercent);
       return currentDifference >= triggerPercent;
     }
 
