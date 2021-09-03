@@ -110,6 +110,7 @@ abstract contract SmartFundCore is Ownable, IERC20 {
   event Withdraw(address indexed user, uint256 sharesRemoved, uint256 totalShares);
   event Trade(address src, uint256 srcAmount, address dest, uint256 destReceived);
   event SmartFundCreated(address indexed owner);
+  event UpdateSwapperStatus(address indexed swapper, bool status);
 
   // modifier role which allow call trade
   function onlySwapper() internal view {
@@ -558,6 +559,7 @@ abstract contract SmartFundCore is Ownable, IERC20 {
   */
   function updateSwapperStatus(address _swapper, bool _status) external onlyOwner {
     swappers[_swapper] = _status;
+    emit UpdateSwapperStatus(_swapper, _status);
   }
 
   /**
