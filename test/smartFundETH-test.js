@@ -45,6 +45,7 @@ const Token = artifacts.require('./tokens/Token')
 const ExchangePortalMock = artifacts.require('./portalsMock/ExchangePortalMock')
 const CoTraderDAOWalletMock = artifacts.require('./CoTraderDAOWalletMock')
 const OneInch = artifacts.require('./OneInchMock')
+const FlashLoanTakeCutAtack = artifacts.require('./FlashLoanTakeCutAtack')
 
 
 // Tokens keys converted in bytes32
@@ -64,7 +65,8 @@ let xxxERC,
     merkleWhiteList,
     MerkleTREE,
     ETHBNT,
-    COT_DAO_WALLET
+    COT_DAO_WALLET,
+    flashLoanTakeCutAtack
 
 
 
@@ -162,6 +164,8 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
       permittedAddresses.address,
       true                                          // verification for trade tokens
     )
+
+    flashLoanTakeCutAtack = await FlashLoanTakeCutAtack.new(smartFundETH.address)
   }
 
   beforeEach(async function() {
@@ -1262,6 +1266,28 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
       await smartFundETH.setWhitelistOnly(false)
       await smartFundETH.deposit({ from: userOne, value: 100 })
       assert.equal(await smartFundETH.addressToShares.call(userOne), toWei(String(2)))
+    })
+  })
+
+  describe('Flash loan manager take cut atack', function() {
+    it('Can not trade and take cut in same tx', async function() {
+      await smartFundETH.deposit({ from: userOne, value: 100 })
+      // give portal some money
+      await xxxERC.transfer(exchangePortal.address, 1000)
+
+      await smartFundETH.updateSwapperStatus(flashLoanTakeCutAtack.address, true)
+      await smartFundETH.transferOwnership(flashLoanTakeCutAtack.address)
+      // get proof and position for dest token
+      const proof = MerkleTREE.getProof(keccak256(xxxERC.address)).map(x => buf2hex(x.data))
+      const position = MerkleTREE.getProof(keccak256(xxxERC.address)).map(x => x.position === 'right' ? 1 : 0)
+      await flashLoanTakeCutAtack.atack(
+        proof,
+        position,
+        ONEINCH_MOCK_ADDITIONAL_PARAMS,
+        ETH_TOKEN_ADDRESS,
+        xxxERC.address,
+        100
+      ).should.be.rejectedWith(EVMRevert)
     })
   })
 

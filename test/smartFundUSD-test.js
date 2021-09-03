@@ -48,7 +48,7 @@ const Token = artifacts.require('./tokens/Token')
 const ExchangePortalMock = artifacts.require('./portalsMock/ExchangePortalMock')
 const CoTraderDAOWalletMock = artifacts.require('./CoTraderDAOWalletMock')
 const OneInch = artifacts.require('./OneInchMock')
-
+const FlashLoanTakeCutAtack = artifacts.require('./FlashLoanTakeCutAtack')
 
 // Tokens keys converted in bytes32
 const TOKEN_KEY_CRYPTOCURRENCY = "0x43525950544f43555252454e4359000000000000000000000000000000000000"
@@ -68,7 +68,8 @@ let xxxERC,
     merkleWhiteList,
     MerkleTREE,
     ETHBNT,
-    COT_DAO_WALLET
+    COT_DAO_WALLET,
+    flashLoanTakeCutAtack
 
 
 contract('smartFundERC20', function([userOne, userTwo, userThree]) {
@@ -170,6 +171,8 @@ contract('smartFundERC20', function([userOne, userTwo, userThree]) {
       DAI.address,                                  // address_stableCoinAddress
       true                                          // verification for trade tokens
     )
+
+    flashLoanTakeCutAtack = await FlashLoanTakeCutAtack.new(smartFundERC20.address)
   }
 
   beforeEach(async function() {
@@ -1347,6 +1350,29 @@ contract('smartFundERC20', function([userOne, userTwo, userThree]) {
       await smartFundERC20.deposit(100, { from: userOne })
 
       assert.equal(await smartFundERC20.addressToShares.call(userOne), toWei(String(2)))
+    })
+  })
+
+  describe('Flash loan manager take cut atack', function() {
+    it('Can not trade and take cut in same tx', async function() {
+      await DAI.approve(smartFundERC20.address, 100, { from: userOne })
+      await smartFundERC20.deposit(100, { from: userOne })
+      // give portal some money
+      await xxxERC.transfer(exchangePortal.address, 1000)
+
+      await smartFundERC20.updateSwapperStatus(flashLoanTakeCutAtack.address, true)
+      await smartFundERC20.transferOwnership(flashLoanTakeCutAtack.address)
+      // get proof and position for dest token
+      const proof = MerkleTREE.getProof(keccak256(xxxERC.address)).map(x => buf2hex(x.data))
+      const position = MerkleTREE.getProof(keccak256(xxxERC.address)).map(x => x.position === 'right' ? 1 : 0)
+      await flashLoanTakeCutAtack.atack(
+        proof,
+        position,
+        ONEINCH_MOCK_ADDITIONAL_PARAMS,
+        ETH_TOKEN_ADDRESS,
+        xxxERC.address,
+        100
+      ).should.be.rejectedWith(EVMRevert)
     })
   })
 
