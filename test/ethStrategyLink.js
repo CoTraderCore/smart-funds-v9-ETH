@@ -60,9 +60,9 @@ let xxxERC,
 
 
 
-contract('SmartFundETH', function([userOne, userTwo, userThree]) {
+contract('Strategy UNI/WETH', function([userOne, userTwo, userThree]) {
 
-  async function deployContracts(successFee=1000){
+  async function deployContracts(tokenLD=100, ethLD=100){
     oneInch = await OneInch.new()
     token = await Token.new(
       "TOKEN",
@@ -87,16 +87,18 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
     uniswapV2Router = await UniswapV2Router.new(uniswapV2Factory.address, weth.address)
 
     // add token liquidity
-    await token.approve(uniswapV2Router.address, toWei(String(100)))
+    await token.approve(uniswapV2Router.address, toWei(String(tokenLD)))
+
+    console.log("tokenLD", tokenLD, "ethLD", ethLD)
 
     await uniswapV2Router.addLiquidityETH(
       token.address,
-      toWei(String(100)),
+      toWei(String(tokenLD)),
       1,
       1,
       userOne,
       "1111111111111111111111"
-    , { from:userOne, value:toWei(String(100)) })
+    , { from:userOne, value:toWei(String(ethLD)) })
 
     pairAddress = await uniswapV2Factory.allPairs(0)
     pair = await UniswapV2Pair.at(pairAddress)
@@ -140,18 +142,18 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
     smartFundETH = await SmartFundETH.new(
       userOne,                                      // address _owner,
       'TEST ETH FUND',                              // string _name,
-      successFee,                                   // uint256 _successFee,
-      COT_DAO_WALLET.address,                               // address _platformAddress,
+      1000,                                         // uint256 _successFee,
+      COT_DAO_WALLET.address,                       // address _platformAddress,
       exchangePortal.address,                       // address _exchangePortalAddress,
       permittedAddresses.address,
-      false                                          // verification for trade tokens
+      false                                         // verification for trade tokens
     )
 
     // Deploy strattegy
     strategy = await STRATEGY.new(
       uniswapV2Router.address,
       pairAddress,
-      [weth.address, token.address],
+      [token.address, weth.address],
       smartFundETH.address,
       token.address,
       weth.address
@@ -164,22 +166,29 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
     await smartFundETH.updateSwapperStatus(strategy.address, true)
   }
 
-  beforeEach(async function() {
-    await deployContracts()
-  })
 
-  describe('BUY and SELL indicators ', function() {
+  describe('BUY and SELL indicators should works correct for pool 1 to 1', async function() {
+    const uniLD = 100
+    const ethLD = 100
+    const tokenToSell = 50
+    const ethToSell = 50
+
     it('should indicate skipp when price not trigger', async function() {
+       await deployContracts(uniLD, ethLD)
        assert.equal(await strategy.computeTradeAction(), 0)
     })
 
-    it('should indicate buy when ETH price go DOWN to UNI ', async function() {
-      // DUMP PRICE
-      await token.approve(uniswapV2Router.address, toWei(String(50)))
 
-      console.log("rate before ",  Number(fromWei(await strategy.getUNIPriceInUNDERLYING())).toFixed(1))
+    it('should indicate buy when ETH price go DOWN to UNI ', async function() {
+      await deployContracts(uniLD, ethLD)
+      console.log(
+        "rate rate 100 to 100", Number(fromWei(await strategy.getUNIPriceInUNDERLYING())).toFixed(1)
+      )
+      // DUMP PRICE
+      await token.approve(uniswapV2Router.address, toWei(String(tokenToSell)))
+
       await uniswapV2Router.swapExactTokensForTokens(
-         toWei(String(50)),
+         toWei(String(tokenToSell)),
          1,
          [token.address, weth.address],
          userOne,
@@ -197,14 +206,143 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
        assert.equal(await strategy.computeTradeAction(), 2) // Should sell UNI
     })
 
+
     it('should indicate sell when ETH price go UP to UNI', async function() {
+       await deployContracts(uniLD, ethLD)
        // PUMP PRICE
        await uniswapV2Router.swapExactETHForTokens(
          1,
          [weth.address, token.address],
          userOne,
          "1111111111111111111"
-         , { from: userOne, value: toWei(String(50))}
+         , { from: userOne, value: toWei(String(ethToSell))}
+       )
+
+       console.log(
+         "LD / RATE before", Number(await strategy.previousLDRatePrice()),
+         "LD / RATE", Number(await strategy.getLDRatePrice()),
+         "rate ", Number(fromWei(await strategy.getUNIPriceInUNDERLYING())).toFixed(1),
+         "LD amount", Number(fromWei(await strategy.getLDAmount())).toFixed(1)
+       )
+       assert.equal(await strategy.computeTradeAction(), 1) // Should buy UNI
+    })
+  })
+
+  describe('BUY and SELL indicators should works correct for pool 1000 to 1', async function() {
+    const uniLD = 1000
+    const ethLD = 1
+    const tokenToSell = 500
+    const ethToSell = 500
+
+    it('should indicate skipp when price not trigger', async function() {
+       await deployContracts(uniLD, ethLD)
+       assert.equal(await strategy.computeTradeAction(), 0)
+    })
+
+
+    it('should indicate buy when ETH price go DOWN to UNI 1', async function() {
+
+      await deployContracts(uniLD, ethLD)
+
+      console.log(
+        "LD / RATE prev ", Number(await strategy.previousLDRatePrice()),
+        "LD / RATE current ", Number(await strategy.getLDRatePrice()),
+        "rate ", Number(fromWei(await strategy.getUNIPriceInUNDERLYING())),
+        "LD amount", Number(fromWei(await strategy.getLDAmount()))
+      )
+
+      // DUMP PRICE
+      await token.approve(uniswapV2Router.address, toWei(String(tokenToSell)))
+
+      await uniswapV2Router.swapExactTokensForTokens(
+         toWei(String(tokenToSell)),
+         1,
+         [token.address, weth.address],
+         userOne,
+         "1111111111111111111"
+         , { from: userOne }
+       )
+
+       console.log(
+         "LD / RATE before", Number(await strategy.previousLDRatePrice()),
+         "LD / RATE", Number(await strategy.getLDRatePrice()),
+         "rate ", Number(fromWei(await strategy.getUNIPriceInUNDERLYING())),
+         "LD amount", Number(fromWei(await strategy.getLDAmount()))
+       )
+
+       assert.equal(await strategy.computeTradeAction(), 2) // Should sell UNI
+    })
+
+
+    it('should indicate sell when ETH price go UP to UNI', async function() {
+       await deployContracts(1000, 1)
+       // PUMP PRICE
+       await uniswapV2Router.swapExactETHForTokens(
+         1,
+         [weth.address, token.address],
+         userOne,
+         "1111111111111111111"
+         , { from: userOne, value: toWei(String(ethToSell))}
+       )
+
+       console.log(
+         "LD / RATE before", Number(await strategy.previousLDRatePrice()),
+         "LD / RATE", Number(await strategy.getLDRatePrice()),
+         "rate ", Number(fromWei(await strategy.getUNIPriceInUNDERLYING())).toFixed(1),
+         "LD amount", Number(fromWei(await strategy.getLDAmount())).toFixed(1)
+       )
+       assert.equal(await strategy.computeTradeAction(), 1) // Should buy UNI
+    })
+  })
+
+
+  describe('BUY and SELL indicators should works correct for pool 1 to 1000', async function() {
+    const uniLD = 1
+    const ethLD = 1000
+    const tokenToSell = 500
+    const ethToSell = 500
+
+    it('should indicate skipp when price not trigger', async function() {
+       await deployContracts(uniLD, ethLD)
+       assert.equal(await strategy.computeTradeAction(), 0)
+    })
+
+
+    it('should indicate buy when ETH price go DOWN to UNI 2', async function() {
+      await deployContracts(uniLD, ethLD)
+
+      // DUMP PRICE
+      await token.approve(uniswapV2Router.address, toWei(String(tokenToSell)))
+
+      await uniswapV2Router.swapExactTokensForTokens(
+         toWei(String(tokenToSell)),
+         1,
+         [token.address, weth.address],
+         userOne,
+         "1111111111111111111"
+         , { from: userOne }
+       )
+
+       console.log(
+         "LD / RATE before", Number(await strategy.previousLDRatePrice()),
+         "LD / RATE", Number(await strategy.getLDRatePrice()),
+         "rate ", Number(fromWei(await strategy.getUNIPriceInUNDERLYING())).toFixed(1),
+         "LD amount", Number(fromWei(await strategy.getLDAmount())).toFixed(1)
+       )
+
+       assert.equal(await strategy.computeTradeAction(), 2) // Should sell UNI
+    })
+
+
+    it('should indicate sell when ETH price go UP to UNI', async function() {
+       await deployContracts(uniLD, ethLD)
+       // PUMP PRICE
+       await uniswapV2Router.swapExactETHForTokens(
+         1,
+         [weth.address, token.address],
+         userOne,
+         "1111111111111111111"
+         , { from: userOne, value: toWei(String(ethToSell))}
        )
 
        console.log(

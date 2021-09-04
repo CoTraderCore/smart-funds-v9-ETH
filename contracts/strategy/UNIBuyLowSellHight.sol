@@ -53,7 +53,7 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
 
     constructor(
         address _router, // Uniswap v2 router
-        address _poolAddress, // Uniswap v2 pool (pair) SHOULD BE ETH BASED POOL 
+        address _poolAddress, // Uniswap v2 pool (pair) SHOULD BE ETH BASED POOL
         address[] memory _path, // path [UNI, UNDERLYING]
         address _fund, // SmartFund address
         address _UNI_TOKEN, // Uniswap token
@@ -153,7 +153,7 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
             previousLDRatePrice,
             triggerPercentToBuy
           )
-          ? 1 // BUY UNI
+          ? 2 // SELL UNI
           : 0;
 
           return res;
@@ -167,7 +167,7 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
            currentLDRatePrice,
            triggerPercentToSell
          )
-         ? 2 // SELL UNI
+         ? 1 // BUY UNI
          : 0;
 
          return res;
