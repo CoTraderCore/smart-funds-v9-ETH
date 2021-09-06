@@ -153,7 +153,6 @@ contract('Strategy UNI/WETH', function([userOne, userTwo, userThree]) {
     strategy = await STRATEGY.new(
       uniswapV2Router.address,
       pairAddress,
-      [token.address, weth.address],
       smartFundETH.address,
       token.address,
       weth.address

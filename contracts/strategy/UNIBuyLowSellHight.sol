@@ -52,19 +52,24 @@ contract UNIBuyLowSellHigh is KeeperCompatibleInterface, Ownable {
 
 
     constructor(
-        address _router, // Uniswap v2 router
+        address _router,      // Uniswap v2 router
         address _poolAddress, // Uniswap v2 pool (pair) SHOULD BE ETH BASED POOL
-        address[] memory _path, // path [UNI, UNDERLYING]
-        address _fund, // SmartFund address
-        address _UNI_TOKEN, // Uniswap token
-        address _LD_TOKEN  // WETH or any another backed pool token
+        address _fund,        // SmartFund address
+        address _UNI_TOKEN,   // Uniswap token
+        address _LD_TOKEN     // WETH or any another backed pool token
       )
       public
     {
       router = IRouter(_router);
       poolAddress = _poolAddress;
+
+      address[] memory _path = new address[](2);
+      _path[0] = _UNI_TOKEN;
+      _path[1] = _LD_TOKEN;
       path = _path;
+
       fund = IFund(_fund);
+
       UNI_TOKEN = _UNI_TOKEN;
       UNDERLYING_ADDRESS = fund.coreFundAsset();
       LD_TOKEN = _LD_TOKEN;
