@@ -21,7 +21,7 @@ import "../../uniswap/interfaces/IUniswapV2Router.sol";
 contract ExchangePortalLight is ExchangePortalInterface, Ownable {
   using SafeMath for uint256;
 
-  uint public version = 5;
+  uint public version = 6;
 
   // Contract for merkle tree white list verification
   IMerkleTreeTokensVerification public merkleTreeWhiteList;

@@ -18,7 +18,7 @@ NOTE: in separate console
 5) Add any fund asset type.
 6) Remove Pools and Defi call
 7) Remove tokens type stotage track (because we use for now only erc20)
-8) Protect manager takeCut from flash loan atack 
+8) Protect manager takeCut from flash loan atack
 ```
 
 
@@ -28,4 +28,10 @@ NOTE: in separate console
 ```
 Don't forget add new addresses to new permittedAddresses contract
 Don't forget set latest 1inch contract
+```
+
+# Addresses
+
+```
+
 ```
