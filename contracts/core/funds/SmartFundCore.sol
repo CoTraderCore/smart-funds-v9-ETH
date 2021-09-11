@@ -26,7 +26,7 @@ abstract contract SmartFundCore is Ownable, IERC20 {
   using SafeERC20 for IERC20;
 
   // Fund type
-  bool public isLightFund = false;
+  bool public isLightFund = true;
 
   // Total amount of ether or stable deposited by all users
   uint256 public totalWeiDeposited = 0;
