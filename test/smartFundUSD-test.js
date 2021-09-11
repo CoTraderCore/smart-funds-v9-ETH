@@ -216,7 +216,7 @@ contract('smartFundERC20', function([userOne, userTwo, userThree]) {
     })
 
     it('Correct size type', async function() {
-      assert.equal(await smartFundERC20.isLightFund(), false)
+      assert.equal(await smartFundERC20.isLightFund(), true)
     })
 
     it('Correct init usd smart fund', async function() {

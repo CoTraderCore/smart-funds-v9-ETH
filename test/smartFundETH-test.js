@@ -201,7 +201,7 @@ contract('SmartFundETH', function([userOne, userTwo, userThree]) {
     })
 
     it('Correct size type', async function() {
-      assert.equal(await smartFundETH.isLightFund(), false)
+      assert.equal(await smartFundETH.isLightFund(), true)
     })
 
     it('Correct exchange portal in fund', async function() {
