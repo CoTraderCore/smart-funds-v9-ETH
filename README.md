@@ -46,4 +46,6 @@ COT Token
 Convert portal
 
 0x42c5f95e15eE6a236722248Daf47909a3561d88e
+
+https://etherscan.io/tx/0x1b3f2d65a7d23a81c52c0f0c684a3813168ed62bdc595b38091e14e1c9b6372e
 ```
