@@ -33,5 +33,17 @@ Don't forget set latest 1inch contract
 # Addresses
 
 ```
+Uniswap v2 router
 
+0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
+
+
+COT Token
+
+0x5c872500c00565505F3624AB435c222E558E9ff8
+
+
+Convert portal
+
+0x42c5f95e15eE6a236722248Daf47909a3561d88e
 ```
