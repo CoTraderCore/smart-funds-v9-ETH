@@ -33,6 +33,16 @@ Don't forget set latest 1inch contract
 # Addresses
 
 ```
+1INCH Proto
+
+0x50FDA034C0Ce7a8f7EFDAebDA7Aa7cA21CC1267e
+
+
+1INCH ETH
+
+0x11111254369792b2Ca5d084aB5eEA397cA8fa48B
+
+
 Uniswap v2 router
 
 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
@@ -48,4 +58,20 @@ Convert portal
 0x42c5f95e15eE6a236722248Daf47909a3561d88e
 
 https://etherscan.io/tx/0x1b3f2d65a7d23a81c52c0f0c684a3813168ed62bdc595b38091e14e1c9b6372e
+
+
+
+PermittedAddresses
+
+0x9674ce5043606eCEE025240B7EF78fe76C8c75A6
+
+https://etherscan.io/tx/0x97a0943b442ad18cb94b1a996bd08b7799ce59361ccbba2d76195188f5011c7d
+
+
+
+MerkleTree
+
+0x992F6c414A6DA6A7470dfB9D61eFc6639e9fbb0E
+
+https://etherscan.io/tx/0xe91ad57fdab82bfea08d4382e8fea7f116dd237783493d4f722c86157ec46397
 ```
