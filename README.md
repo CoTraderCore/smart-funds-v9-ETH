@@ -72,7 +72,9 @@ Stake
 https://etherscan.io/tx/0x0310fc81a1614537496271cd88b6c571b3b72aaa9ed44aa24897a5ad8d921755
 
 
+Platform DAO Wallet
 
+https://etherscan.io/tx/0xa80d119ba862e134a9483e6974a16778168dea1cc92218aadc886afc5f1967a4
 
 
 PermittedAddresses
