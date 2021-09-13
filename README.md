@@ -74,6 +74,8 @@ https://etherscan.io/tx/0x0310fc81a1614537496271cd88b6c571b3b72aaa9ed44aa24897a5
 
 Platform DAO Wallet
 
+0xf1B735685416253A8F7c8a6686970cA2B0cceCce
+
 https://etherscan.io/tx/0xa80d119ba862e134a9483e6974a16778168dea1cc92218aadc886afc5f1967a4
 
 
