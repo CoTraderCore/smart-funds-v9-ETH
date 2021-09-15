@@ -98,6 +98,7 @@ contract('SmartFundRegistry', function([userOne, userTwo, userThree]) {
     this.COT = '0x0000000000000000000000000000000000000000'
     this.ExchangePortal = '0x0000000000000000000000000000000000000001'
     this.DAI = '0x0000000000000000000000000000000000000004'
+    this.platformFeeAddress = '0x0000000000000000000000000000000000000005'
 
     this.permittedAddresses = await PermittedAddresses.new(
       this.ExchangePortal,
@@ -115,6 +116,7 @@ contract('SmartFundRegistry', function([userOne, userTwo, userThree]) {
       this.smartFundETHFactory.address,             //   SmartFundETHFactory.address,
       this.SmartFundERC20Factory.address,           //   SmartFundERC20Factory.address
       this.permittedAddresses.address,              //   PermittedAddresses
+      this.platformFeeAddress                       //   Platform fee
     )
   })
 
@@ -126,6 +128,10 @@ contract('SmartFundRegistry', function([userOne, userTwo, userThree]) {
 
     it('Correct initial ExchangePortal', async function() {
       assert.equal(this.ExchangePortal, await this.registry.exchangePortalAddress())
+    })
+
+    it('Correct init platform fee', async function() {
+      assert.equal(this.platformFeeAddress , await this.registry.platformFeeAddress())
     })
   })
 
@@ -186,6 +192,11 @@ contract('SmartFundRegistry', function([userOne, userTwo, userThree]) {
       assert.equal(testAddress, await this.registry.smartFundERC20Factory())
     })
 
+    it('Owner should be able change platformAddress', async function() {
+      await this.registry.setNewPlatformFeeAddress(testAddress)
+      assert.equal(testAddress, await this.registry.platformFeeAddress())
+    })
+
 
     it('NOT Owner should NOT be able change exchange portal address', async function() {
       await this.permittedAddresses.addNewAddress(testAddress, 1)
@@ -205,6 +216,11 @@ contract('SmartFundRegistry', function([userOne, userTwo, userThree]) {
 
     it('NOT Owner should NOT be able change ERC20 Factory', async function() {
       await this.registry.setNewSmartFundERC20Factory(testAddress, { from:userTwo })
+      .should.be.rejectedWith(EVMRevert)
+    })
+
+    it('NOT Owner should NOT be able change platformAddress', async function() {
+      await this.registry.setNewPlatformFeeAddress(testAddress, { from:userTwo })
       .should.be.rejectedWith(EVMRevert)
     })
   })
