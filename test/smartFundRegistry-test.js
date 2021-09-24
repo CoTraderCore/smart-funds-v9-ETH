@@ -135,7 +135,7 @@ contract('SmartFundRegistry', function([userOne, userTwo, userThree]) {
     })
   })
 
-  describe('Create full funds', function() {
+  describe('Create light funds', function() {
     it('should be able create new ETH fund and address in fund correct', async function() {
       await this.registry.createSmartFund("ETH Fund", 20, this.ETH_TOKEN_ADDRESS, true)
 

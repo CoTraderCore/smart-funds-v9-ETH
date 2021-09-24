@@ -180,7 +180,7 @@ contract('smartFundERC20', function([userOne, userTwo, userThree]) {
   })
 
   describe('INIT', function() {
-    it('Correct init xxx token', async function() {
+    it('Correct init tokens', async function() {
       const nameX = await xxxERC.name()
       const totalSupplyX = await xxxERC.totalSupply()
       assert.equal(nameX, "xxxERC20")
