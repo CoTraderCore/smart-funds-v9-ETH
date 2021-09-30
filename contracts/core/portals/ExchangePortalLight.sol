@@ -387,7 +387,7 @@ contract ExchangePortalLight is ExchangePortalInterface, Ownable {
 
   // owner can set new 1inch router
   function setNewOneInchRouter(address _OneInchRoute) external onlyOwner {
-    OneInchRoute = _OneInchRoute
+    OneInchRoute = _OneInchRoute;
   }
 
   // fallback payable function to receive ether from other contract addresses
